@@ -76,7 +76,7 @@ export default function ClinicSettingsPage() {
   }
 
   return (
-    <div className="space-y-6 max-w-4xl">
+    <div className="space-y-6 p-4 max-w-4xl">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Clinic Settings</h1>
         <p className="text-muted-foreground">Manage global clinic configuration</p>

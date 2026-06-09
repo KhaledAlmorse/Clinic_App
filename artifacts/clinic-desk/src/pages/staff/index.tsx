@@ -136,7 +136,7 @@ export default function StaffPage() {
   const staff = data?.data ?? [];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-4">
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Staff Management</h1>
