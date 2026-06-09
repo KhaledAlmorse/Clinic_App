@@ -8,17 +8,20 @@ const router = Router();
 
 router.get("/reports/summary", authenticate, authorize("admin", "doctor"), async (req, res): Promise<void> => {
   try {
-    const [[{ totalRevenue }]] = await db.execute(
+    const revResult = await db.execute(
       sql`SELECT SUM(paid_amount) as "totalRevenue" FROM invoices`
     );
+    const totalRevenue = revResult.rows[0]?.totalRevenue || 0;
 
-    const [[{ totalPatients }]] = await db.execute(
+    const patResult = await db.execute(
       sql`SELECT COUNT(*) as "totalPatients" FROM patients`
     );
+    const totalPatients = patResult.rows[0]?.totalPatients || 0;
 
-    const appointmentsByStatus = await db.execute(
+    const appointmentsByStatusResult = await db.execute(
       sql`SELECT status, COUNT(*) as count FROM appointments GROUP BY status`
     );
+    const appointmentsByStatus = appointmentsByStatusResult.rows;
 
     const revenueByMonthResult = await db.execute(
       sql`
@@ -31,12 +34,13 @@ router.get("/reports/summary", authenticate, authorize("admin", "doctor"), async
         ORDER BY MIN(issued_at) ASC
       `
     );
+    const revenueByMonth = revenueByMonthResult.rows;
 
     res.json({
       totalRevenue: Number(totalRevenue) || 0,
       totalPatients: Number(totalPatients) || 0,
       appointmentsByStatus: appointmentsByStatus.map(r => ({ status: r.status, count: Number(r.count) })),
-      revenueByMonth: revenueByMonthResult.map(r => ({ month: r.month, revenue: Number(r.revenue) })),
+      revenueByMonth: revenueByMonth.map(r => ({ month: r.month, revenue: Number(r.revenue) })),
     });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
