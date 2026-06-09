@@ -27,7 +27,8 @@ router.get("/reports/summary", authenticate, authorize("admin", "doctor"), async
       sql`
         SELECT 
           to_char(issued_at, 'Mon YYYY') as month,
-          SUM(paid_amount) as revenue
+          SUM(paid_amount) as revenue,
+          COUNT(*) as "invoiceCount"
         FROM invoices
         WHERE issued_at >= NOW() - INTERVAL '6 months'
         GROUP BY 1
@@ -40,7 +41,11 @@ router.get("/reports/summary", authenticate, authorize("admin", "doctor"), async
       totalRevenue: Number(totalRevenue) || 0,
       totalPatients: Number(totalPatients) || 0,
       appointmentsByStatus: appointmentsByStatus.map(r => ({ status: r.status, count: Number(r.count) })),
-      revenueByMonth: revenueByMonth.map(r => ({ month: r.month, revenue: Number(r.revenue) })),
+      revenueByMonth: revenueByMonth.map(r => ({
+        month: r.month,
+        revenue: Number(r.revenue),
+        invoiceCount: Number(r.invoiceCount) || 0,
+      })),
     });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
