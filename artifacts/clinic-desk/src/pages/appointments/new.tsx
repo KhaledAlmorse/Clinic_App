@@ -13,7 +13,10 @@ export default function NewAppointmentPage({ patientId: prefill }: { patientId?:
   const queryClient = useQueryClient();
   const createMutation = useCreateAppointment();
   const { user } = useAuth();
-  const { data: patients } = useListPatients({ limit: 100 });
+  const { data: patients } = useListPatients(
+    { limit: 100 },
+    { query: { enabled: user?.role !== "patient" } }
+  );
   
   const [doctors, setDoctors] = useState<any[]>([]);
   const [availableSlots, setAvailableSlots] = useState<string[]>([]);
@@ -24,7 +27,13 @@ export default function NewAppointmentPage({ patientId: prefill }: { patientId?:
     api.get("/users?role=doctor").then((res) => {
       setDoctors(res.data);
     });
-  }, []);
+    
+    if (user?.role === "patient") {
+      api.get(`/patients/by-user/${user.id}`).then((res) => {
+        setForm(f => ({ ...f, patientId: String(res.data.id) }));
+      });
+    }
+  }, [user]);
 
   const [form, setForm] = useState({
     patientId: prefill ?? "",
@@ -85,10 +94,14 @@ export default function NewAppointmentPage({ patientId: prefill }: { patientId?:
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className={lbl}>Patient *</label>
-            <select required value={form.patientId} onChange={set("patientId")} className={inp}>
-              <option value="">Select patient</option>
-              {patients?.data.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
+            {user?.role === "patient" ? (
+              <input type="text" disabled value="Your Profile" className={inp} />
+            ) : (
+              <select required value={form.patientId} onChange={set("patientId")} className={inp}>
+                <option value="">Select patient</option>
+                {patients?.data.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+              </select>
+            )}
           </div>
           <div>
             <label className={lbl}>Doctor *</label>

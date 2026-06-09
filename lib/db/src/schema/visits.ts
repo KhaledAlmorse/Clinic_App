@@ -1,11 +1,13 @@
 import { pgTable, text, serial, timestamp, integer, date } from "drizzle-orm/pg-core";
+import { patientsTable } from "./patients";
+import { usersTable } from "./users";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
 export const visitsTable = pgTable("visits", {
   id: serial("id").primaryKey(),
-  patientId: integer("patient_id").notNull(),
-  doctorId: integer("doctor_id").notNull(),
+  patientId: integer("patient_id").references(() => patientsTable.id).notNull(),
+  doctorId: integer("doctor_id").references(() => usersTable.id).notNull(),
   appointmentId: integer("appointment_id"),
   visitDate: date("visit_date", { mode: "string" }).notNull(),
   chiefComplaint: text("chief_complaint"),

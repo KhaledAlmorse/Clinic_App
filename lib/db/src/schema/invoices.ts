@@ -1,11 +1,13 @@
 import { pgTable, text, serial, timestamp, integer, jsonb, numeric, date } from "drizzle-orm/pg-core";
+import { patientsTable } from "./patients";
+import { visitsTable } from "./visits";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
 export const invoicesTable = pgTable("invoices", {
   id: serial("id").primaryKey(),
-  patientId: integer("patient_id").notNull(),
-  visitId: integer("visit_id"),
+  patientId: integer("patient_id").references(() => patientsTable.id).notNull(),
+  visitId: integer("visit_id").references(() => visitsTable.id),
   totalAmount: numeric("total_amount", { precision: 10, scale: 2 }).notNull(),
   paidAmount: numeric("paid_amount", { precision: 10, scale: 2 }).notNull().default("0"),
   status: text("status").notNull().default("pending"), // pending, partial, paid, cancelled

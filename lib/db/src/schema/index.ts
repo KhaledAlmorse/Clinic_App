@@ -8,3 +8,4 @@ export * from "./activity_log";
 export * from "./notifications";
 export * from "./settings";
 export * from "./doctor_schedules";
+export * from "./visit_attachments";

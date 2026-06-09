@@ -1,11 +1,41 @@
 import { Link } from "wouter";
 import { useGetVisit, getGetVisitQueryKey } from "@workspace/api-client-react";
-import { ArrowLeft, FileText, Calendar } from "lucide-react";
+import { ArrowLeft, FileText, Calendar, Upload, Download } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { api } from "@/lib/api";
+import { toast } from "sonner";
+import { useRef, useState } from "react";
 
 export default function VisitDetailPage({ id }: { id: number }) {
   const { data: visit, isLoading } = useGetVisit(id, {
     query: { queryKey: getGetVisitQueryKey(id) }
   });
+  
+  const { data: attachments, refetch: refetchAttachments } = useQuery({
+    queryKey: ["visit_attachments", id],
+    queryFn: () => api.get(`/visits/${id}/attachments`).then(res => res.data),
+  });
+  
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      await api.postForm(`/visits/${id}/attachments`, formData);
+      toast.success("File uploaded successfully");
+      refetchAttachments();
+    } catch {
+      toast.error("Failed to upload file");
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
 
   if (isLoading) return <div className="p-8 text-center text-muted-foreground">Loading...</div>;
   if (!visit) return <div className="p-8 text-center text-muted-foreground">Visit not found</div>;
@@ -62,6 +92,38 @@ export default function VisitDetailPage({ id }: { id: number }) {
             <p className="text-sm text-foreground whitespace-pre-wrap">{visit.treatmentPlan}</p>
           </Section>
         )}
+        <Section title="Attachments">
+          <div className="space-y-4">
+            <div className="flex items-center gap-3">
+              <input type="file" ref={fileInputRef} onChange={handleUpload} className="hidden" />
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploading}
+                className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-border text-sm font-medium hover:bg-muted disabled:opacity-50"
+              >
+                <Upload size={14} /> {uploading ? "Uploading..." : "Upload File"}
+              </button>
+            </div>
+            
+            {!attachments?.length ? (
+              <p className="text-sm text-muted-foreground">No files attached to this visit.</p>
+            ) : (
+              <ul className="space-y-2">
+                {attachments.map((file: any) => (
+                  <li key={file.id} className="flex items-center justify-between p-2 rounded-lg border border-border/50 bg-muted/20">
+                    <div className="truncate pr-4">
+                      <p className="text-sm font-medium truncate" title={file.fileName}>{file.fileName}</p>
+                      <p className="text-xs text-muted-foreground">{new Date(file.uploadedAt).toLocaleString()}</p>
+                    </div>
+                    <a href={file.fileUrl} target="_blank" rel="noreferrer" className="p-1.5 rounded-md hover:bg-muted text-primary" title="Download">
+                      <Download size={16} />
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </Section>
       </div>
     </div>
   );

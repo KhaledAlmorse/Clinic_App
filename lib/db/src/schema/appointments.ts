@@ -1,11 +1,13 @@
-import { pgTable, text, serial, timestamp, integer } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, timestamp, integer, varchar } from "drizzle-orm/pg-core";
+import { patientsTable } from "./patients";
+import { usersTable } from "./users";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
 export const appointmentsTable = pgTable("appointments", {
   id: serial("id").primaryKey(),
-  patientId: integer("patient_id").notNull(),
-  doctorId: integer("doctor_id").notNull(),
+  patientId: integer("patient_id").references(() => patientsTable.id).notNull(),
+  doctorId: integer("doctor_id").references(() => usersTable.id).notNull(),
   scheduledAt: timestamp("scheduled_at", { withTimezone: true }).notNull(),
   duration: integer("duration").notNull().default(30), // minutes
   status: text("status").notNull().default("scheduled"), // scheduled, confirmed, in_progress, completed, cancelled, no_show

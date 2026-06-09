@@ -12,6 +12,13 @@ export const api = {
     });
     return { data };
   },
+  postForm: async (url: string, body: FormData) => {
+    const data = await customFetch<any>(`/api${url}`, {
+      method: "POST",
+      body,
+    });
+    return { data };
+  },
   put: async (url: string, body?: any) => {
     const data = await customFetch<any>(`/api${url}`, {
       method: "PUT",
