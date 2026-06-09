@@ -1,6 +1,11 @@
 import path from "node:path";
 import app from "./app";
 import { logger } from "./lib/logger";
+import patientsRouter from "./routes/patients";
+import dashboardRouter from "./routes/dashboard";
+import settingsRouter from "./routes/settings";
+import { initCronJobs } from "./cron";
+import { Request, Response, NextFunction } from "express";
 
 // Natively load environment variables in Node 24
 try {
@@ -26,6 +31,17 @@ const port = Number(rawPort);
 if (Number.isNaN(port) || port <= 0) {
   throw new Error(`Invalid PORT value: "${rawPort}"`);
 }
+
+app.use("/api", patientsRouter);
+app.use("/api", dashboardRouter);
+app.use("/api", settingsRouter);
+
+initCronJobs();
+
+app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
+  logger.error({ err }, "Internal server error");
+  res.status(500).json({ error: "Internal server error" });
+});
 
 app.listen(port, (err) => {
   if (err) {

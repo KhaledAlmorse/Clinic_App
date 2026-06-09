@@ -6,10 +6,16 @@ import { I18nProvider } from "@/contexts/I18nContext";
 import Layout from "@/components/Layout";
 import NotFound from "@/pages/not-found";
 
+import LandingPage from "@/pages/landing";
+
 // Pages
 import LoginPage from "@/pages/login";
 import RegisterPage from "@/pages/register";
 import DashboardPage from "@/pages/dashboard";
+import MyRecordsPage from "@/pages/my-records";
+import StaffPage from "@/pages/staff/index";
+import ClinicSettingsPage from "@/pages/settings";
+import ReportsPage from "@/pages/reports";
 import PatientsPage from "@/pages/patients/index";
 import NewPatientPage from "@/pages/patients/new";
 import PatientDetailPage from "@/pages/patients/detail";
@@ -61,14 +67,32 @@ function AppRoutes() {
 
   return (
     <Switch>
-      <Route path="/login" component={LoginPage} />
-      <Route path="/register" component={RegisterPage} />
-      <Route path="/">
-        {isAuthenticated ? <Redirect to="/dashboard" /> : <Redirect to="/login" />}
+      <Route path="/login">
+        {isAuthenticated ? <Redirect to="/dashboard" /> : <LoginPage />}
       </Route>
+      <Route path="/register">
+        {isAuthenticated ? <Redirect to="/dashboard" /> : <RegisterPage />}
+      </Route>
+      <Route path="/" component={LandingPage} />
 
       <Route path="/dashboard">
         <ProtectedRoute><DashboardPage /></ProtectedRoute>
+      </Route>
+
+      <Route path="/my-records">
+        <ProtectedRoute><MyRecordsPage /></ProtectedRoute>
+      </Route>
+
+      <Route path="/staff">
+        <ProtectedRoute><StaffPage /></ProtectedRoute>
+      </Route>
+
+      <Route path="/settings">
+        <ProtectedRoute><ClinicSettingsPage /></ProtectedRoute>
+      </Route>
+
+      <Route path="/reports">
+        <ProtectedRoute><ReportsPage /></ProtectedRoute>
       </Route>
 
       {/* Patients */}

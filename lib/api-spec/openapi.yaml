@@ -270,6 +270,35 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Appointment"
+  /appointments/available-slots:
+    get:
+      operationId: getAvailableSlots
+      tags: [appointments]
+      summary: Get available appointment slots for a doctor on a specific date
+      parameters:
+        - name: doctorId
+          in: query
+          required: true
+          schema:
+            type: integer
+        - name: date
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: List of available slots
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+                  format: date-time
+
+
 
   /appointments/{id}:
     get:
@@ -730,10 +759,13 @@ components:
       properties:
         name:
           type: string
+          minLength: 2
         email:
           type: string
+          format: email
         password:
           type: string
+          minLength: 6
         role:
           type: string
           enum: [patient, receptionist, doctor, admin]
@@ -804,10 +836,13 @@ components:
       properties:
         name:
           type: string
+          minLength: 2
         email:
           type: string
+          format: email
         phone:
           type: string
+          minLength: 5
         dateOfBirth:
           type: string
         gender:
@@ -823,6 +858,8 @@ components:
           type: string
         notes:
           type: string
+
+
 
     PatientUpdate:
       type: object

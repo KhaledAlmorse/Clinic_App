@@ -25,8 +25,10 @@ export const RegisterInputRole = {
 } as const;
 
 export interface RegisterInput {
+  /** @minLength 2 */
   name: string;
   email: string;
+  /** @minLength 6 */
   password: string;
   role: RegisterInputRole;
 }
@@ -97,8 +99,10 @@ export const PatientInputGender = {
 } as const;
 
 export interface PatientInput {
+  /** @minLength 2 */
   name: string;
   email: string;
+  /** @minLength 5 */
   phone: string;
   dateOfBirth: string;
   gender: PatientInputGender;
@@ -468,6 +472,11 @@ patientId?: number;
 status?: string;
 page?: number;
 limit?: number;
+};
+
+export type GetAvailableSlotsParams = {
+doctorId: number;
+date: string;
 };
 
 export type ListVisitsParams = {

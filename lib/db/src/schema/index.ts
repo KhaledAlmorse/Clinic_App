@@ -6,3 +6,5 @@ export * from "./prescriptions";
 export * from "./invoices";
 export * from "./activity_log";
 export * from "./notifications";
+export * from "./settings";
+export * from "./doctor_schedules";

@@ -5,6 +5,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
+import { api } from "@/lib/api";
+import { useEffect } from "react";
 
 export default function NewAppointmentPage({ patientId: prefill }: { patientId?: string }) {
   const [, navigate] = useLocation();
@@ -12,6 +14,17 @@ export default function NewAppointmentPage({ patientId: prefill }: { patientId?:
   const createMutation = useCreateAppointment();
   const { user } = useAuth();
   const { data: patients } = useListPatients({ limit: 100 });
+  
+  const [doctors, setDoctors] = useState<any[]>([]);
+  const [availableSlots, setAvailableSlots] = useState<string[]>([]);
+  const [loadingSlots, setLoadingSlots] = useState(false);
+  const [selectedDate, setSelectedDate] = useState("");
+
+  useEffect(() => {
+    api.get("/users?role=doctor").then((res) => {
+      setDoctors(res.data);
+    });
+  }, []);
 
   const [form, setForm] = useState({
     patientId: prefill ?? "",
@@ -21,6 +34,19 @@ export default function NewAppointmentPage({ patientId: prefill }: { patientId?:
     type: "consultation" as const,
     notes: "",
   });
+
+  useEffect(() => {
+    if (form.doctorId && selectedDate) {
+      setLoadingSlots(true);
+      api.get(`/appointments/available-slots?doctorId=${form.doctorId}&date=${selectedDate}`)
+        .then((res) => {
+          setAvailableSlots(res.data);
+        })
+        .finally(() => setLoadingSlots(false));
+    } else {
+      setAvailableSlots([]);
+    }
+  }, [form.doctorId, selectedDate]);
 
   const set = (k: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
     setForm(f => ({ ...f, [k]: e.target.value }));
@@ -65,12 +91,15 @@ export default function NewAppointmentPage({ patientId: prefill }: { patientId?:
             </select>
           </div>
           <div>
-            <label className={lbl}>Doctor ID *</label>
-            <input required type="number" value={form.doctorId} onChange={set("doctorId")} className={inp} placeholder="Doctor user ID" />
+            <label className={lbl}>Doctor *</label>
+            <select required value={form.doctorId} onChange={set("doctorId")} className={inp} disabled={user?.role === "doctor"}>
+              <option value="">Select doctor</option>
+              {doctors.map(d => <option key={d.id} value={d.id}>{d.name} {d.specialty ? `(${d.specialty})` : ""}</option>)}
+            </select>
           </div>
           <div>
-            <label className={lbl}>Date & Time *</label>
-            <input required type="datetime-local" value={form.scheduledAt} onChange={set("scheduledAt")} className={inp} />
+            <label className={lbl}>Date *</label>
+            <input required type="date" value={selectedDate} onChange={(e) => { setSelectedDate(e.target.value); setForm(f => ({ ...f, scheduledAt: "" })); }} className={inp} />
           </div>
           <div>
             <label className={lbl}>Duration (minutes)</label>
@@ -87,6 +116,45 @@ export default function NewAppointmentPage({ patientId: prefill }: { patientId?:
               <option value="checkup">Checkup</option>
               <option value="procedure">Procedure</option>
             </select>
+          </div>
+          <div className="sm:col-span-2">
+            <label className={lbl}>Available Slots *</label>
+            {!form.doctorId || !selectedDate ? (
+              <div className="text-sm text-muted-foreground p-4 bg-muted/50 rounded-lg border border-border text-center">
+                Please select a doctor and date to see available slots.
+              </div>
+            ) : loadingSlots ? (
+              <div className="text-sm text-muted-foreground p-4 bg-muted/50 rounded-lg border border-border text-center">
+                Loading slots...
+              </div>
+            ) : availableSlots.length === 0 ? (
+              <div className="text-sm text-muted-foreground p-4 bg-muted/50 rounded-lg border border-border text-center">
+                No slots available on this date for the selected doctor.
+              </div>
+            ) : (
+              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
+                {availableSlots.map(slot => {
+                  const d = new Date(slot);
+                  const timeString = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                  const isSelected = form.scheduledAt === slot;
+                  return (
+                    <button
+                      key={slot}
+                      type="button"
+                      onClick={() => setForm(f => ({ ...f, scheduledAt: slot }))}
+                      className={`py-2 px-3 text-sm rounded-md border transition-colors ${isSelected ? 'bg-primary text-primary-foreground border-primary font-medium shadow-sm' : 'bg-background border-border hover:border-primary/50 hover:bg-muted'}`}
+                    >
+                      {timeString}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+            {form.scheduledAt && (
+              <p className="text-xs text-muted-foreground mt-2">
+                Selected: {new Date(form.scheduledAt).toLocaleString()}
+              </p>
+            )}
           </div>
         </div>
         <div>

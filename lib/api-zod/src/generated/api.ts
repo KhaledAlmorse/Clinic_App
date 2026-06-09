@@ -41,10 +41,16 @@ export const LoginResponse = zod.object({
 /**
  * @summary Register new user
  */
+export const registerBodyNameMin = 2;
+
+export const registerBodyPasswordMin = 6;
+
+
+
 export const RegisterBody = zod.object({
-  "name": zod.string(),
-  "email": zod.string(),
-  "password": zod.string(),
+  "name": zod.string().min(registerBodyNameMin),
+  "email": zod.string().email(),
+  "password": zod.string().min(registerBodyPasswordMin),
   "role": zod.enum(['patient', 'receptionist', 'doctor', 'admin'])
 })
 
@@ -99,10 +105,16 @@ export const ListPatientsResponse = zod.object({
 /**
  * @summary Create patient
  */
+export const createPatientBodyNameMin = 2;
+
+export const createPatientBodyPhoneMin = 5;
+
+
+
 export const CreatePatientBody = zod.object({
-  "name": zod.string(),
-  "email": zod.string(),
-  "phone": zod.string(),
+  "name": zod.string().min(createPatientBodyNameMin),
+  "email": zod.string().email(),
+  "phone": zod.string().min(createPatientBodyPhoneMin),
   "dateOfBirth": zod.string(),
   "gender": zod.enum(['male', 'female', 'other']),
   "bloodType": zod.string().optional(),
@@ -230,6 +242,18 @@ export const CreateAppointmentBody = zod.object({
   "type": zod.enum(['consultation', 'follow_up', 'emergency', 'checkup', 'procedure']),
   "notes": zod.string().optional()
 })
+
+
+/**
+ * @summary Get available appointment slots for a doctor on a specific date
+ */
+export const GetAvailableSlotsQueryParams = zod.object({
+  "doctorId": zod.coerce.number(),
+  "date": zod.date()
+})
+
+export const GetAvailableSlotsResponseItem = zod.coerce.date()
+export const GetAvailableSlotsResponse = zod.array(GetAvailableSlotsResponseItem)
 
 
 /**

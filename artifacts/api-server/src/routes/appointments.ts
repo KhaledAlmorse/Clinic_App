@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { eq, and, gte, lte, desc, sql } from "drizzle-orm";
-import { db, appointmentsTable, patientsTable, usersTable, activityLogTable } from "@workspace/db";
+import { db, appointmentsTable, patientsTable, usersTable, activityLogTable, doctorSchedulesTable } from "@workspace/db";
 import {
   CreateAppointmentBody, UpdateAppointmentBody,
   GetAppointmentParams, UpdateAppointmentParams, DeleteAppointmentParams,
@@ -29,14 +29,24 @@ async function formatAppointment(a: typeof appointmentsTable.$inferSelect) {
   };
 }
 
-router.get("/appointments", authenticate, authorize("admin", "doctor", "receptionist"), async (req, res): Promise<void> => {
+router.get("/appointments", authenticate, authorize("admin", "doctor", "receptionist", "patient"), async (req, res): Promise<void> => {
   const qp = ListAppointmentsQueryParams.safeParse(req.query);
   if (!qp.success) {
     res.status(400).json({ error: qp.error.message });
     return;
   }
-  const { date, startDate, endDate, doctorId, patientId, status, page = 1, limit = 20 } = qp.data;
+  const { date, startDate, endDate, doctorId, status, page = 1, limit = 20 } = qp.data;
+  let { patientId } = qp.data;
   const offset = (page - 1) * limit;
+
+  if (req.userRole === "patient") {
+    const [pat] = await db.select({ id: patientsTable.id }).from(patientsTable).where(eq(patientsTable.userId, req.userId!));
+    if (!pat) {
+      res.status(404).json({ error: "Patient profile not found" });
+      return;
+    }
+    patientId = pat.id;
+  }
 
   const conditions: ReturnType<typeof eq>[] = [];
   if (doctorId) conditions.push(eq(appointmentsTable.doctorId, doctorId));
@@ -65,14 +75,92 @@ router.get("/appointments", authenticate, authorize("admin", "doctor", "receptio
   res.json({ data, total: Number(count), page, limit });
 });
 
-router.post("/appointments", authenticate, authorize("admin", "doctor", "receptionist"), async (req, res): Promise<void> => {
+router.get("/appointments/available-slots", authenticate, async (req, res): Promise<void> => {
+  const doctorId = Number(req.query.doctorId);
+  const dateStr = req.query.date as string;
+  if (!doctorId || !dateStr) {
+    res.status(400).json({ error: "Missing doctorId or date" });
+    return;
+  }
+  const targetDate = new Date(dateStr);
+  const dayOfWeek = targetDate.getDay();
+
+  // Get schedule
+  const [schedule] = await db.select().from(doctorSchedulesTable)
+    .where(and(
+      eq(doctorSchedulesTable.doctorId, doctorId),
+      eq(doctorSchedulesTable.dayOfWeek, dayOfWeek),
+      eq(doctorSchedulesTable.isWorking, true)
+    ));
+
+  if (!schedule) {
+    res.json([]);
+    return;
+  }
+
+  const startOfDay = new Date(targetDate);
+  startOfDay.setHours(0, 0, 0, 0);
+  const endOfDay = new Date(targetDate);
+  endOfDay.setHours(23, 59, 59, 999);
+
+  // Get existing appointments
+  const existingAppts = await db.select({ scheduledAt: appointmentsTable.scheduledAt, duration: appointmentsTable.duration })
+    .from(appointmentsTable)
+    .where(and(
+      eq(appointmentsTable.doctorId, doctorId),
+      gte(appointmentsTable.scheduledAt, startOfDay),
+      lte(appointmentsTable.scheduledAt, endOfDay)
+    ));
+
+  const [startHour, startMin] = schedule.startTime.split(':').map(Number);
+  const [endHour, endMin] = schedule.endTime.split(':').map(Number);
+  const slots: string[] = [];
+  
+  let current = new Date(targetDate);
+  current.setHours(startHour, startMin, 0, 0);
+  const endTime = new Date(targetDate);
+  endTime.setHours(endHour, endMin, 0, 0);
+
+  const slotDuration = 30 * 60 * 1000; // 30 minutes
+
+  while (current.getTime() + slotDuration <= endTime.getTime()) {
+    // Check if slot conflicts with existing appointments
+    const slotEnd = new Date(current.getTime() + slotDuration);
+    const isConflict = existingAppts.some(appt => {
+      const apptEnd = new Date(appt.scheduledAt.getTime() + (appt.duration * 60 * 1000));
+      // Overlap condition: slotStart < apptEnd && slotEnd > apptStart
+      return current.getTime() < apptEnd.getTime() && slotEnd.getTime() > appt.scheduledAt.getTime();
+    });
+
+    if (!isConflict) {
+      slots.push(current.toISOString());
+    }
+    current = new Date(current.getTime() + slotDuration);
+  }
+
+  res.json(slots);
+});
+
+router.post("/appointments", authenticate, authorize("admin", "doctor", "receptionist", "patient"), async (req, res): Promise<void> => {
   const parsed = CreateAppointmentBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
+
+  let patientId = parsed.data.patientId;
+  if (req.userRole === "patient") {
+    const [pat] = await db.select({ id: patientsTable.id }).from(patientsTable).where(eq(patientsTable.userId, req.userId!));
+    if (!pat) {
+      res.status(404).json({ error: "Patient profile not found" });
+      return;
+    }
+    patientId = pat.id;
+  }
+
   const values = {
     ...parsed.data,
+    patientId,
     scheduledAt: new Date(parsed.data.scheduledAt),
     duration: parsed.data.duration ?? 30,
   };
@@ -112,6 +200,20 @@ router.patch("/appointments/:id", authenticate, authorize("admin", "doctor", "re
     res.status(400).json({ error: parsed.error.message });
     return;
   }
+  
+  const [existingAppt] = await db.select().from(appointmentsTable).where(eq(appointmentsTable.id, params.data.id));
+  if (!existingAppt) {
+    res.status(404).json({ error: "Appointment not found" });
+    return;
+  }
+
+  if (["confirmed", "completed", "no_show"].includes(existingAppt.status) && parsed.data.status) {
+    if (req.userRole !== "admin" && req.userRole !== "receptionist") {
+      res.status(403).json({ error: "Cannot edit the status of an appointment in this state" });
+      return;
+    }
+  }
+
   const updateData: Record<string, unknown> = { ...parsed.data };
   if (parsed.data.scheduledAt) {
     updateData.scheduledAt = new Date(parsed.data.scheduledAt);

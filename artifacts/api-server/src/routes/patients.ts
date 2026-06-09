@@ -84,6 +84,24 @@ router.get("/patients/:id", authenticate, authorize("admin", "doctor", "receptio
   res.json(formatPatient(patient));
 });
 
+router.get("/patients/by-user/:userId", authenticate, async (req: any, res): Promise<void> => {
+  const userId = parseInt(req.params.userId, 10);
+  if (isNaN(userId)) {
+    res.status(400).json({ error: "Invalid userId" });
+    return;
+  }
+  if (req.userRole === "patient" && req.userId !== userId) {
+    res.status(403).json({ error: "Forbidden: can only view own records" });
+    return;
+  }
+  const [patient] = await db.select().from(patientsTable).where(eq(patientsTable.userId, userId));
+  if (!patient) {
+    res.status(404).json({ error: "Patient profile not found" });
+    return;
+  }
+  res.json(formatPatient(patient));
+});
+
 router.patch("/patients/:id", authenticate, authorize("admin", "doctor", "receptionist"), async (req, res): Promise<void> => {
   const raw = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
   const params = UpdatePatientParams.safeParse({ id: parseInt(raw, 10) });

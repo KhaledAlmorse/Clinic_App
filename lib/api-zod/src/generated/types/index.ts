@@ -18,6 +18,7 @@ export * from './appointmentUpdateStatus';
 export * from './appointmentUpdateType';
 export * from './authResponse';
 export * from './dashboardStats';
+export * from './getAvailableSlotsParams';
 export * from './getRevenueReportParams';
 export * from './healthStatus';
 export * from './invoice';

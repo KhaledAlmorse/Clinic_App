@@ -8,6 +8,9 @@ import prescriptionsRouter from "./prescriptions";
 import invoicesRouter from "./invoices";
 import dashboardRouter from "./dashboard";
 import notificationsRouter from "./notifications";
+import settingsRouter from "./settings";
+import usersRouter from "./users";
+import reportsRouter from "./reports";
 
 const router: IRouter = Router();
 
@@ -20,5 +23,9 @@ router.use(prescriptionsRouter);
 router.use(invoicesRouter);
 router.use(dashboardRouter);
 router.use(notificationsRouter);
+router.use(settingsRouter);
+router.use(usersRouter);
+router.use(reportsRouter);
 
 export default router;
+

@@ -8,8 +8,10 @@
 import type { PatientInputGender } from './patientInputGender';
 
 export interface PatientInput {
+  /** @minLength 2 */
   name: string;
   email: string;
+  /** @minLength 5 */
   phone: string;
   dateOfBirth: string;
   gender: PatientInputGender;

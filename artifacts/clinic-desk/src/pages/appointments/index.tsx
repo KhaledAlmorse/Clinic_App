@@ -6,6 +6,8 @@ import { Plus, Calendar, List, ChevronLeft, ChevronRight } from "lucide-react";
 import { format, addDays, startOfWeek, addWeeks } from "date-fns";
 import { useI18n } from "@/contexts/I18nContext";
 import { toast } from "sonner";
+import { api } from "@/lib/api";
+import { useEffect } from "react";
 
 const STATUS_COLORS: Record<string, string> = {
   scheduled: "bg-blue-100 text-blue-700",
@@ -76,11 +78,19 @@ export default function AppointmentsPage() {
   const { t } = useI18n();
   const [view, setView] = useState<"list" | "calendar">("list");
   const [statusFilter, setStatusFilter] = useState("");
+  const [doctorFilter, setDoctorFilter] = useState("");
   const [page, setPage] = useState(1);
   const queryClient = useQueryClient();
   const updateMutation = useUpdateAppointment();
+  
+  const [doctors, setDoctors] = useState<any[]>([]);
+  useEffect(() => {
+    api.get("/users?role=doctor").then((res) => {
+      setDoctors(res.data);
+    });
+  }, []);
 
-  const params = { status: statusFilter || undefined, page, limit: 30 };
+  const params = { status: statusFilter || undefined, doctorId: doctorFilter ? parseInt(doctorFilter) : undefined, page, limit: 30 };
   const { data, isLoading } = useListAppointments(params, {
     query: { queryKey: getListAppointmentsQueryKey(params) }
   });
@@ -122,8 +132,19 @@ export default function AppointmentsPage() {
         </div>
       </div>
 
-      <div className="flex gap-2 flex-wrap">
-        <button onClick={() => setStatusFilter("")} className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${!statusFilter ? "bg-primary text-primary-foreground border-primary" : "border-border hover:bg-muted"}`}>All</button>
+      <div className="flex gap-2 flex-wrap items-center">
+        <select 
+          value={doctorFilter} 
+          onChange={(e) => setDoctorFilter(e.target.value)} 
+          className="text-sm px-3 py-1.5 rounded-lg border border-border bg-background focus:outline-none focus:ring-1 focus:ring-ring"
+        >
+          <option value="">All Doctors</option>
+          {doctors.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+        </select>
+        
+        <div className="w-px h-6 bg-border mx-1" />
+
+        <button onClick={() => setStatusFilter("")} className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${!statusFilter ? "bg-primary text-primary-foreground border-primary" : "border-border hover:bg-muted"}`}>All Statuses</button>
         {STATUSES.map(s => (
           <button key={s} onClick={() => setStatusFilter(s)} className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${statusFilter === s ? "bg-primary text-primary-foreground border-primary" : "border-border hover:bg-muted"}`}>
             {s.replace("_", " ")}

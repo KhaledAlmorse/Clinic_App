@@ -4,7 +4,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useI18n } from "@/contexts/I18nContext";
 import {
   LayoutDashboard, Users, Calendar, ClipboardList,
-  FileText, Receipt, LogOut, Globe, Menu, X, Bell, Check, Info
+  FileText, Receipt, LogOut, Globe, Menu, X, Bell, Check, Info,
+  Settings as SettingsIcon, UserCog, BarChart, User
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useListNotifications, useUnreadCount, useMarkAsRead } from "@/hooks/useNotifications";
@@ -18,11 +19,15 @@ interface NavItem {
 
 const allNavItems: NavItem[] = [
   { href: "/dashboard", label: "dashboard", icon: <LayoutDashboard size={18} />, roles: ["admin", "doctor", "receptionist", "patient"] },
+  { href: "/my-records", label: "my records", icon: <User size={18} />, roles: ["patient"] },
   { href: "/patients", label: "patients", icon: <Users size={18} />, roles: ["admin", "receptionist", "doctor"] },
   { href: "/appointments", label: "appointments", icon: <Calendar size={18} />, roles: ["admin", "doctor", "receptionist", "patient"] },
   { href: "/visits", label: "visits", icon: <ClipboardList size={18} />, roles: ["admin", "doctor", "receptionist"] },
   { href: "/prescriptions", label: "prescriptions", icon: <FileText size={18} />, roles: ["admin", "doctor", "patient"] },
   { href: "/invoices", label: "invoices", icon: <Receipt size={18} />, roles: ["admin", "receptionist"] },
+  { href: "/reports", label: "reports", icon: <BarChart size={18} />, roles: ["admin", "doctor"] },
+  { href: "/staff", label: "staff", icon: <UserCog size={18} />, roles: ["admin"] },
+  { href: "/settings", label: "settings", icon: <SettingsIcon size={18} />, roles: ["admin"] },
 ];
 
 function NavLink({ item, collapsed }: { item: NavItem; collapsed: boolean }) {
