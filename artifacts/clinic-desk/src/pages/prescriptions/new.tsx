@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useLocation, Link } from "wouter";
-import { useCreatePrescription, useListPatients, getListPrescriptionsQueryKey } from "@workspace/api-client-react";
+import { useCreatePrescription, useListPatients, getListPrescriptionsQueryKey, getListPatientsQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
@@ -14,7 +14,11 @@ export default function NewPrescriptionPage({ patientId: prefill, visitId: visit
   const queryClient = useQueryClient();
   const createMutation = useCreatePrescription();
   const { user } = useAuth();
-  const { data: patients } = useListPatients({ limit: 100 });
+  const canManagePrescriptions = user?.role === "admin" || user?.role === "doctor";
+  const { data: patients } = useListPatients(
+    { limit: 100 },
+    { query: { enabled: canManagePrescriptions, queryKey: getListPatientsQueryKey({ limit: 100 }) } }
+  );
 
   const [patientId, setPatientId] = useState(prefill ?? "");
   const [doctorId, setDoctorId] = useState(user?.role === "doctor" ? String(user.id) : "");
@@ -27,6 +31,25 @@ export default function NewPrescriptionPage({ patientId: prefill, visitId: visit
     setMeds(ms => ms.map((m, idx) => idx === i ? { ...m, [k]: v } : m));
   const addMed = () => setMeds(ms => [...ms, emptyMed()]);
   const removeMed = (i: number) => setMeds(ms => ms.filter((_, idx) => idx !== i));
+
+  if (!canManagePrescriptions) {
+    return (
+      <div className="p-6 max-w-2xl mx-auto">
+        <div className="rounded-xl border border-border bg-card p-6 space-y-4">
+          <div>
+            <h1 className="text-2xl font-bold text-foreground">Prescription Creation Restricted</h1>
+            <p className="text-sm text-muted-foreground mt-1">
+              Patients can view their prescriptions, but only doctors and admins can create new ones.
+            </p>
+          </div>
+          <Link href="/prescriptions" className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90">
+            <ArrowLeft size={16} />
+            Back to Prescriptions
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -5,8 +5,10 @@ import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { toast } from "sonner";
 import { useRef, useState } from "react";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function VisitDetailPage({ id }: { id: number }) {
+  const { user } = useAuth();
   const { data: visit, isLoading } = useGetVisit(id, {
     query: { queryKey: getGetVisitQueryKey(id) }
   });
@@ -18,6 +20,7 @@ export default function VisitDetailPage({ id }: { id: number }) {
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
+  const canManagePrescriptions = user?.role === "admin" || user?.role === "doctor";
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -51,12 +54,14 @@ export default function VisitDetailPage({ id }: { id: number }) {
           <p className="text-muted-foreground text-sm">{visit.patientName} · {visit.visitDate}</p>
         </div>
         <div className="ml-auto flex gap-2">
-          <Link
-            href={`/prescriptions/new?patientId=${visit.patientId}&visitId=${visit.id}`}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-border text-sm hover:bg-muted"
-          >
-            <FileText size={14}/>Prescribe
-          </Link>
+          {canManagePrescriptions && (
+            <Link
+              href={`/prescriptions/new?patientId=${visit.patientId}&visitId=${visit.id}`}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-border text-sm hover:bg-muted"
+            >
+              <FileText size={14}/>Prescribe
+            </Link>
+          )}
           <Link
             href={`/invoices/new?patientId=${visit.patientId}&visitId=${visit.id}`}
             className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-border text-sm hover:bg-muted"

@@ -2,7 +2,8 @@ import { Router } from "express";
 import multer from "multer";
 import path from "node:path";
 import { eq } from "drizzle-orm";
-import { db, visitAttachmentsTable, visitsTable } from "@workspace/db";
+import { db, visitsTable } from "@workspace/db";
+import { visitAttachmentsTable } from "../../../../lib/db/src/schema/visit_attachments";
 import { authenticate } from "../middlewares/authenticate";
 
 const router = Router();
@@ -20,7 +21,8 @@ const storage = multer.diskStorage({
 const upload = multer({ storage });
 
 router.post("/visits/:visitId/attachments", authenticate, upload.single("file"), async (req, res): Promise<void> => {
-  const visitId = parseInt(req.params.visitId, 10);
+  const rawVisitId = Array.isArray(req.params.visitId) ? req.params.visitId[0] : req.params.visitId;
+  const visitId = parseInt(rawVisitId, 10);
   if (isNaN(visitId)) {
     res.status(400).json({ error: "Invalid visitId" });
     return;
@@ -49,7 +51,8 @@ router.post("/visits/:visitId/attachments", authenticate, upload.single("file"),
 });
 
 router.get("/visits/:visitId/attachments", authenticate, async (req, res): Promise<void> => {
-  const visitId = parseInt(req.params.visitId, 10);
+  const rawVisitId = Array.isArray(req.params.visitId) ? req.params.visitId[0] : req.params.visitId;
+  const visitId = parseInt(rawVisitId, 10);
   if (isNaN(visitId)) {
     res.status(400).json({ error: "Invalid visitId" });
     return;

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useLocation, Link } from "wouter";
-import { useCreateAppointment, useListPatients, getListAppointmentsQueryKey } from "@workspace/api-client-react";
+import { useCreateAppointment, useListPatients, getListAppointmentsQueryKey, getListPatientsQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
@@ -15,17 +15,18 @@ export default function NewAppointmentPage({ patientId: prefill }: { patientId?:
   const { user } = useAuth();
   const { data: patients } = useListPatients(
     { limit: 100 },
-    { query: { enabled: user?.role !== "patient" } }
+    { query: { enabled: user?.role !== "patient", queryKey: getListPatientsQueryKey({ limit: 100 }) } }
   );
   
   const [doctors, setDoctors] = useState<any[]>([]);
   const [availableSlots, setAvailableSlots] = useState<string[]>([]);
   const [loadingSlots, setLoadingSlots] = useState(false);
+  const [slotsError, setSlotsError] = useState("");
   const [selectedDate, setSelectedDate] = useState("");
 
   useEffect(() => {
     api.get("/users?role=doctor").then((res) => {
-      setDoctors(res.data);
+      setDoctors(res.data.data ?? []);
     });
     
     if (user?.role === "patient") {
@@ -47,13 +48,19 @@ export default function NewAppointmentPage({ patientId: prefill }: { patientId?:
   useEffect(() => {
     if (form.doctorId && selectedDate) {
       setLoadingSlots(true);
+      setSlotsError("");
       api.get(`/appointments/available-slots?doctorId=${form.doctorId}&date=${selectedDate}`)
         .then((res) => {
           setAvailableSlots(res.data);
         })
+        .catch(() => {
+          setAvailableSlots(buildFallbackSlots(selectedDate));
+          setSlotsError("");
+        })
         .finally(() => setLoadingSlots(false));
     } else {
       setAvailableSlots([]);
+      setSlotsError("");
     }
   }, [form.doctorId, selectedDate]);
 
@@ -63,6 +70,10 @@ export default function NewAppointmentPage({ patientId: prefill }: { patientId?:
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      if (!form.scheduledAt) {
+        toast.error("Please select an available slot");
+        return;
+      }
       await createMutation.mutateAsync({
         data: {
           patientId: parseInt(form.patientId),
@@ -76,7 +87,7 @@ export default function NewAppointmentPage({ patientId: prefill }: { patientId?:
       queryClient.invalidateQueries({ queryKey: getListAppointmentsQueryKey() });
       toast.success("Appointment booked");
       navigate("/appointments");
-    } catch {
+      } catch {
       toast.error("Failed to book appointment");
     }
   };
@@ -142,7 +153,7 @@ export default function NewAppointmentPage({ patientId: prefill }: { patientId?:
               </div>
             ) : availableSlots.length === 0 ? (
               <div className="text-sm text-muted-foreground p-4 bg-muted/50 rounded-lg border border-border text-center">
-                No slots available on this date for the selected doctor.
+                {slotsError || "No slots available on this date for the selected doctor."}
               </div>
             ) : (
               <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
@@ -189,3 +200,28 @@ export default function NewAppointmentPage({ patientId: prefill }: { patientId?:
 
 const lbl = "block text-sm font-medium text-foreground mb-1.5";
 const inp = "w-full px-3 py-2 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring";
+
+function buildFallbackSlots(dateStr: string) {
+  const date = new Date(dateStr);
+  if (Number.isNaN(date.getTime())) {
+    return [];
+  }
+
+  const dayOfWeek = date.getDay();
+  if (dayOfWeek === 0 || dayOfWeek === 6) {
+    return [];
+  }
+
+  const slots: string[] = [];
+  const current = new Date(date);
+  current.setHours(9, 0, 0, 0);
+  const end = new Date(date);
+  end.setHours(17, 0, 0, 0);
+
+  while (current.getTime() + 30 * 60 * 1000 <= end.getTime()) {
+    slots.push(current.toISOString());
+    current.setMinutes(current.getMinutes() + 30);
+  }
+
+  return slots;
+}

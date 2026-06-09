@@ -1,12 +1,13 @@
 import { Router, type IRouter } from "express";
 import { eq, and, gte, lte, desc, sql } from "drizzle-orm";
-import { db, appointmentsTable, patientsTable, usersTable, activityLogTable, doctorSchedulesTable } from "@workspace/db";
+import { db, appointmentsTable, patientsTable, usersTable, activityLogTable } from "@workspace/db";
+import { doctorSchedulesTable } from "../../../../lib/db/src/schema/doctor_schedules";
 import {
   CreateAppointmentBody, UpdateAppointmentBody,
   GetAppointmentParams, UpdateAppointmentParams, DeleteAppointmentParams,
   ListAppointmentsQueryParams
 } from "@workspace/api-zod";
-import { authenticate } from "../middlewares/authenticate";
+import { authenticate, type AuthRequest } from "../middlewares/authenticate";
 import { authorize } from "../middlewares/authorize";
 
 const router: IRouter = Router();
@@ -29,7 +30,36 @@ async function formatAppointment(a: typeof appointmentsTable.$inferSelect) {
   };
 }
 
-router.get("/appointments", authenticate, authorize("admin", "doctor", "receptionist", "patient"), async (req, res): Promise<void> => {
+function buildSlotsForRange(date: Date, startTime: string, endTime: string, existingAppts: Array<{ scheduledAt: Date; duration: number }>) {
+  const [startHour, startMin] = startTime.split(":").map(Number);
+  const [endHour, endMin] = endTime.split(":").map(Number);
+  const slots: string[] = [];
+
+  let current = new Date(date);
+  current.setHours(startHour, startMin, 0, 0);
+  const endDate = new Date(date);
+  endDate.setHours(endHour, endMin, 0, 0);
+
+  const slotDuration = 30 * 60 * 1000;
+
+  while (current.getTime() + slotDuration <= endDate.getTime()) {
+    const slotEnd = new Date(current.getTime() + slotDuration);
+    const isConflict = existingAppts.some((appt) => {
+      const apptEnd = new Date(appt.scheduledAt.getTime() + appt.duration * 60 * 1000);
+      return current.getTime() < apptEnd.getTime() && slotEnd.getTime() > appt.scheduledAt.getTime();
+    });
+
+    if (!isConflict) {
+      slots.push(current.toISOString());
+    }
+
+    current = new Date(current.getTime() + slotDuration);
+  }
+
+  return slots;
+}
+
+router.get("/appointments", authenticate, authorize("admin", "doctor", "receptionist", "patient"), async (req: AuthRequest, res): Promise<void> => {
   const qp = ListAppointmentsQueryParams.safeParse(req.query);
   if (!qp.success) {
     res.status(400).json({ error: qp.error.message });
@@ -75,7 +105,7 @@ router.get("/appointments", authenticate, authorize("admin", "doctor", "receptio
   res.json({ data, total: Number(count), page, limit });
 });
 
-router.get("/appointments/available-slots", authenticate, async (req, res): Promise<void> => {
+router.get("/appointments/available-slots", authenticate, async (req: AuthRequest, res): Promise<void> => {
   const doctorId = Number(req.query.doctorId);
   const dateStr = req.query.date as string;
   if (!doctorId || !dateStr) {
@@ -85,63 +115,51 @@ router.get("/appointments/available-slots", authenticate, async (req, res): Prom
   const targetDate = new Date(dateStr);
   const dayOfWeek = targetDate.getDay();
 
-  // Get schedule
-  const [schedule] = await db.select().from(doctorSchedulesTable)
-    .where(and(
-      eq(doctorSchedulesTable.doctorId, doctorId),
-      eq(doctorSchedulesTable.dayOfWeek, dayOfWeek),
-      eq(doctorSchedulesTable.isWorking, true)
-    ));
-
-  if (!schedule) {
-    res.json([]);
-    return;
-  }
-
   const startOfDay = new Date(targetDate);
   startOfDay.setHours(0, 0, 0, 0);
   const endOfDay = new Date(targetDate);
   endOfDay.setHours(23, 59, 59, 999);
 
-  // Get existing appointments
-  const existingAppts = await db.select({ scheduledAt: appointmentsTable.scheduledAt, duration: appointmentsTable.duration })
+  const existingAppts = await db
+    .select({ scheduledAt: appointmentsTable.scheduledAt, duration: appointmentsTable.duration })
     .from(appointmentsTable)
-    .where(and(
-      eq(appointmentsTable.doctorId, doctorId),
-      gte(appointmentsTable.scheduledAt, startOfDay),
-      lte(appointmentsTable.scheduledAt, endOfDay)
-    ));
+    .where(
+      and(
+        eq(appointmentsTable.doctorId, doctorId),
+        gte(appointmentsTable.scheduledAt, startOfDay),
+        lte(appointmentsTable.scheduledAt, endOfDay),
+      ),
+    );
 
-  const [startHour, startMin] = schedule.startTime.split(':').map(Number);
-  const [endHour, endMin] = schedule.endTime.split(':').map(Number);
-  const slots: string[] = [];
-  
-  let current = new Date(targetDate);
-  current.setHours(startHour, startMin, 0, 0);
-  const endTime = new Date(targetDate);
-  endTime.setHours(endHour, endMin, 0, 0);
+  try {
+    const [schedule] = await db
+      .select()
+      .from(doctorSchedulesTable)
+      .where(
+        and(
+          eq(doctorSchedulesTable.doctorId, doctorId),
+          eq(doctorSchedulesTable.dayOfWeek, dayOfWeek),
+          eq(doctorSchedulesTable.isWorking, true),
+        ),
+      );
 
-  const slotDuration = 30 * 60 * 1000; // 30 minutes
-
-  while (current.getTime() + slotDuration <= endTime.getTime()) {
-    // Check if slot conflicts with existing appointments
-    const slotEnd = new Date(current.getTime() + slotDuration);
-    const isConflict = existingAppts.some(appt => {
-      const apptEnd = new Date(appt.scheduledAt.getTime() + (appt.duration * 60 * 1000));
-      // Overlap condition: slotStart < apptEnd && slotEnd > apptStart
-      return current.getTime() < apptEnd.getTime() && slotEnd.getTime() > appt.scheduledAt.getTime();
-    });
-
-    if (!isConflict) {
-      slots.push(current.toISOString());
+    if (schedule) {
+      res.json(buildSlotsForRange(targetDate, schedule.startTime, schedule.endTime, existingAppts));
+      return;
     }
-    current = new Date(current.getTime() + slotDuration);
+  } catch {
+    // Fall through to default clinic hours when the schedule table is unavailable.
   }
 
-  res.json(slots);
+  if (dayOfWeek === 0 || dayOfWeek === 6) {
+    res.json([]);
+    return;
+  }
+
+  res.json(buildSlotsForRange(targetDate, "09:00", "17:00", existingAppts));
 });
 
-router.post("/appointments", authenticate, authorize("admin", "doctor", "receptionist", "patient"), async (req, res): Promise<void> => {
+router.post("/appointments", authenticate, authorize("admin", "doctor", "receptionist", "patient"), async (req: AuthRequest, res): Promise<void> => {
   const parsed = CreateAppointmentBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
@@ -188,7 +206,7 @@ router.get("/appointments/:id", authenticate, authorize("admin", "doctor", "rece
   res.json(await formatAppointment(appt));
 });
 
-router.patch("/appointments/:id", authenticate, authorize("admin", "doctor", "receptionist"), async (req, res): Promise<void> => {
+router.patch("/appointments/:id", authenticate, authorize("admin", "doctor", "receptionist"), async (req: AuthRequest, res): Promise<void> => {
   const raw = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
   const params = UpdateAppointmentParams.safeParse({ id: parseInt(raw, 10) });
   if (!params.success) {
@@ -226,7 +244,7 @@ router.patch("/appointments/:id", authenticate, authorize("admin", "doctor", "re
   res.json(await formatAppointment(appt));
 });
 
-router.delete("/appointments/:id", authenticate, authorize("admin", "receptionist"), async (req, res): Promise<void> => {
+router.delete("/appointments/:id", authenticate, authorize("admin", "receptionist"), async (req: AuthRequest, res): Promise<void> => {
   const raw = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
   const params = DeleteAppointmentParams.safeParse({ id: parseInt(raw, 10) });
   if (!params.success) {

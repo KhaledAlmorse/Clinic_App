@@ -86,7 +86,7 @@ export default function AppointmentsPage() {
   const [doctors, setDoctors] = useState<any[]>([]);
   useEffect(() => {
     api.get("/users?role=doctor").then((res) => {
-      setDoctors(res.data);
+      setDoctors(res.data.data ?? []);
     });
   }, []);
 

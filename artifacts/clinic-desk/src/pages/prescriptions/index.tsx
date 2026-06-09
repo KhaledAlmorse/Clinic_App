@@ -3,14 +3,17 @@ import { Link } from "wouter";
 import { useListPrescriptions, getListPrescriptionsQueryKey } from "@workspace/api-client-react";
 import { Plus, ChevronLeft, ChevronRight } from "lucide-react";
 import { useI18n } from "@/contexts/I18nContext";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function PrescriptionsPage() {
   const { t } = useI18n();
+  const { user } = useAuth();
   const [page, setPage] = useState(1);
   const { data, isLoading } = useListPrescriptions({ page, limit: 20 }, {
     query: { queryKey: getListPrescriptionsQueryKey({ page, limit: 20 }) }
   });
   const totalPages = data ? Math.ceil(data.total / 20) : 1;
+  const canManagePrescriptions = user?.role === "admin" || user?.role === "doctor";
 
   return (
     <div className="p-6 space-y-5 max-w-7xl mx-auto">
@@ -19,9 +22,11 @@ export default function PrescriptionsPage() {
           <h1 className="text-2xl font-bold">{t("prescriptions")}</h1>
           <p className="text-muted-foreground text-sm mt-0.5">{data?.total ?? 0} total</p>
         </div>
-        <Link href="/prescriptions/new" className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90">
-          <Plus size={16} /> New Prescription
-        </Link>
+        {canManagePrescriptions && (
+          <Link href="/prescriptions/new" className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90">
+            <Plus size={16} /> New Prescription
+          </Link>
+        )}
       </div>
 
       <div className="bg-card border border-card-border rounded-xl overflow-hidden">

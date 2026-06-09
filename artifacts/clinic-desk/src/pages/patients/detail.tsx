@@ -1,14 +1,17 @@
 import { Link } from "wouter";
 import { useGetPatient, useListVisits, useListPrescriptions, useListInvoices, getGetPatientQueryKey } from "@workspace/api-client-react";
 import { ArrowLeft, Calendar, FileText, Receipt, Heart, Phone, Mail, MapPin, AlertCircle } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function PatientDetailPage({ id }: { id: number }) {
+  const { user } = useAuth();
   const { data: patient, isLoading } = useGetPatient(id, {
     query: { queryKey: getGetPatientQueryKey(id) }
   });
   const { data: visits } = useListVisits({ patientId: id });
   const { data: prescriptions } = useListPrescriptions({ patientId: id });
   const { data: invoices } = useListInvoices({ patientId: id });
+  const canManagePrescriptions = user?.role === "admin" || user?.role === "doctor";
 
   if (isLoading) return <div className="p-8 text-center text-muted-foreground">Loading...</div>;
   if (!patient) return <div className="p-8 text-center text-muted-foreground">Patient not found</div>;
@@ -77,7 +80,7 @@ export default function PatientDetailPage({ id }: { id: number }) {
             {!visits?.data.length && <p className="text-sm text-muted-foreground py-3 text-center">No visits recorded</p>}
           </Section>
 
-          <Section title="Prescriptions" count={prescriptions?.total} newHref={`/prescriptions/new?patientId=${id}`}>
+          <Section title="Prescriptions" count={prescriptions?.total} newHref={canManagePrescriptions ? `/prescriptions/new?patientId=${id}` : undefined}>
             {prescriptions?.data.slice(0, 3).map(p => (
               <Link key={p.id} href={`/prescriptions/${p.id}`} className="block p-3 rounded-lg hover:bg-muted/50 transition-colors border border-border/50">
                 <div className="flex justify-between">

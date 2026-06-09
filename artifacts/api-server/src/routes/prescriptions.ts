@@ -5,7 +5,7 @@ import {
   CreatePrescriptionBody, UpdatePrescriptionBody, GetPrescriptionParams,
   UpdatePrescriptionParams, DeletePrescriptionParams, ListPrescriptionsQueryParams
 } from "@workspace/api-zod";
-import { authenticate } from "../middlewares/authenticate";
+import { authenticate, type AuthRequest } from "../middlewares/authenticate";
 import { authorize } from "../middlewares/authorize";
 
 const router: IRouter = Router();
@@ -27,14 +27,34 @@ async function formatPrescription(p: typeof prescriptionsTable.$inferSelect) {
   };
 }
 
-router.get("/prescriptions", authenticate, authorize("admin", "doctor", "receptionist"), async (req, res): Promise<void> => {
+router.get("/prescriptions", authenticate, authorize("admin", "doctor", "receptionist", "patient"), async (req: AuthRequest, res): Promise<void> => {
   const qp = ListPrescriptionsQueryParams.safeParse(req.query);
   if (!qp.success) {
     res.status(400).json({ error: qp.error.message });
     return;
   }
-  const { patientId, visitId, page = 1, limit = 20 } = qp.data;
+  const { patientId: requestedPatientId, visitId, page = 1, limit = 20 } = qp.data;
   const offset = (page - 1) * limit;
+  let patientId = requestedPatientId;
+
+  if (req.userRole === "patient") {
+    const [patientProfile] = await db
+      .select({ id: patientsTable.id })
+      .from(patientsTable)
+      .where(eq(patientsTable.userId, req.userId!));
+
+    if (!patientProfile) {
+      res.status(404).json({ error: "Patient profile not found" });
+      return;
+    }
+
+    if (requestedPatientId && requestedPatientId !== patientProfile.id) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
+
+    patientId = patientProfile.id;
+  }
 
   const conditions: ReturnType<typeof eq>[] = [];
   if (patientId) conditions.push(eq(prescriptionsTable.patientId, patientId));
@@ -68,7 +88,7 @@ router.post("/prescriptions", authenticate, authorize("admin", "doctor"), async 
   res.status(201).json(await formatPrescription(prescription));
 });
 
-router.get("/prescriptions/:id", authenticate, authorize("admin", "doctor", "receptionist"), async (req, res): Promise<void> => {
+router.get("/prescriptions/:id", authenticate, authorize("admin", "doctor", "receptionist", "patient"), async (req: AuthRequest, res): Promise<void> => {
   const raw = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
   const params = GetPrescriptionParams.safeParse({ id: parseInt(raw, 10) });
   if (!params.success) {
@@ -79,6 +99,22 @@ router.get("/prescriptions/:id", authenticate, authorize("admin", "doctor", "rec
   if (!prescription) {
     res.status(404).json({ error: "Prescription not found" });
     return;
+  }
+  if (req.userRole === "patient") {
+    const [patientProfile] = await db
+      .select({ id: patientsTable.id })
+      .from(patientsTable)
+      .where(eq(patientsTable.userId, req.userId!));
+
+    if (!patientProfile) {
+      res.status(404).json({ error: "Patient profile not found" });
+      return;
+    }
+
+    if (prescription.patientId !== patientProfile.id) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
   }
   res.json(await formatPrescription(prescription));
 });
