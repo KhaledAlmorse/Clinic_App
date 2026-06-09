@@ -4,6 +4,7 @@ import { useCreatePatient, getListPatientsQueryKey } from "@workspace/api-client
 import { useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
+import { showErrorToast } from "@/lib/error";
 
 export default function NewPatientPage() {
   const [, navigate] = useLocation();
@@ -34,8 +35,8 @@ export default function NewPatientPage() {
       queryClient.invalidateQueries({ queryKey: getListPatientsQueryKey() });
       toast.success("Patient created successfully");
       navigate(`/patients/${patient.id}`);
-    } catch {
-      toast.error("Failed to create patient");
+    } catch (error) {
+      showErrorToast(error, "Failed to create patient");
     }
   };
 

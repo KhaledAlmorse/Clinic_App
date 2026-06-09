@@ -4,6 +4,7 @@ import { useCreateInvoice, useListPatients, getListInvoicesQueryKey } from "@wor
 import { useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import { showErrorToast } from "@/lib/error";
 
 interface Item { description: string; quantity: number; unitPrice: number; total: number }
 const emptyItem = (): Item => ({ description: "", quantity: 1, unitPrice: 0, total: 0 });
@@ -47,8 +48,8 @@ export default function NewInvoicePage({ patientId: prefill, visitId: visitPrefi
       queryClient.invalidateQueries({ queryKey: getListInvoicesQueryKey() });
       toast.success("Invoice created");
       navigate("/invoices");
-    } catch {
-      toast.error("Failed to create invoice");
+    } catch (error) {
+      showErrorToast(error, "Failed to create invoice");
     }
   };
 

@@ -5,6 +5,7 @@ import { authenticate, type AuthRequest } from "../middlewares/authenticate";
 import { authorize } from "../middlewares/authorize";
 import { hashPassword } from "../lib/auth";
 import { z } from "zod/v4";
+import { formatZodError } from "../lib/validation";
 
 const router = Router();
 
@@ -66,7 +67,7 @@ router.use("/users", authenticate);
 router.get("/users", async (req: AuthRequest, res) => {
   const parsed = listUsersQuerySchema.safeParse(req.query);
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
+    res.status(400).json({ error: formatZodError(parsed.error) });
     return;
   }
 
@@ -146,7 +147,7 @@ router.post("/users", authorize("admin"), async (req, res) => {
   try {
     const parsed = createUserSchema.safeParse(req.body);
     if (!parsed.success) {
-      res.status(400).json({ error: parsed.error.message });
+      res.status(400).json({ error: formatZodError(parsed.error) });
       return;
     }
 
@@ -172,7 +173,7 @@ router.patch("/users/:id", authorize("admin"), async (req, res) => {
 
     const parsed = updateUserSchema.safeParse(req.body);
     if (!parsed.success) {
-      res.status(400).json({ error: parsed.error.message });
+      res.status(400).json({ error: formatZodError(parsed.error) });
       return;
     }
 

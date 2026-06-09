@@ -6,6 +6,7 @@ import { api } from "@/lib/api";
 import { toast } from "sonner";
 import { useRef, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
+import { showErrorToast } from "@/lib/error";
 
 export default function VisitDetailPage({ id }: { id: number }) {
   const { user } = useAuth();
@@ -32,8 +33,8 @@ export default function VisitDetailPage({ id }: { id: number }) {
       await api.postForm(`/visits/${id}/attachments`, formData);
       toast.success("File uploaded successfully");
       refetchAttachments();
-    } catch {
-      toast.error("Failed to upload file");
+    } catch (error) {
+      showErrorToast(error, "Failed to upload file");
     } finally {
       setUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -102,6 +103,7 @@ export default function VisitDetailPage({ id }: { id: number }) {
             <div className="flex items-center gap-3">
               <input type="file" ref={fileInputRef} onChange={handleUpload} className="hidden" />
               <button
+                type="button"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={uploading}
                 className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-border text-sm font-medium hover:bg-muted disabled:opacity-50"

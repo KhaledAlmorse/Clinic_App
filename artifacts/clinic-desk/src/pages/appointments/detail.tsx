@@ -4,6 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Calendar, User, Clock, FileText, Activity } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
+import { showErrorToast } from "@/lib/error";
 
 const STATUS_COLORS: Record<string, string> = {
   scheduled: "bg-blue-100 text-blue-700",
@@ -29,8 +30,8 @@ export default function AppointmentDetailPage({ id }: { id: number }) {
       queryClient.invalidateQueries({ queryKey: getGetAppointmentQueryKey(id) });
       queryClient.invalidateQueries({ queryKey: getListAppointmentsQueryKey() });
       toast.success("Status updated");
-    } catch {
-      toast.error("Failed to update status");
+    } catch (error) {
+      showErrorToast(error, "Failed to update status");
     }
   };
 

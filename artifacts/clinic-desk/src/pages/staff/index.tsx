@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { api } from "@/lib/api";
+import { showErrorToast } from "@/lib/error";
 
 const STAFF_ROLES = ["admin", "doctor", "receptionist"] as const;
 type StaffRole = (typeof STAFF_ROLES)[number];
@@ -100,7 +101,7 @@ export default function StaffPage() {
       setIsOpen(false);
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.error || "An error occurred");
+      showErrorToast(error, "An error occurred");
     },
   });
 

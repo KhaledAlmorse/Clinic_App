@@ -4,6 +4,7 @@ import { db, patientsTable, activityLogTable } from "@workspace/db";
 import { CreatePatientBody, UpdatePatientBody, GetPatientParams, UpdatePatientParams, DeletePatientParams, ListPatientsQueryParams } from "@workspace/api-zod";
 import { authenticate } from "../middlewares/authenticate";
 import { authorize } from "../middlewares/authorize";
+import { formatZodError } from "../lib/validation";
 
 const router: IRouter = Router();
 
@@ -27,7 +28,7 @@ function formatPatient(p: typeof patientsTable.$inferSelect) {
 router.get("/patients", authenticate, authorize("admin", "doctor", "receptionist"), async (req, res): Promise<void> => {
   const params = ListPatientsQueryParams.safeParse(req.query);
   if (!params.success) {
-    res.status(400).json({ error: params.error.message });
+    res.status(400).json({ error: formatZodError(params.error) });
     return;
   }
   const { search, page = 1, limit = 20 } = params.data;
@@ -57,7 +58,7 @@ router.get("/patients", authenticate, authorize("admin", "doctor", "receptionist
 router.post("/patients", authenticate, authorize("admin", "doctor", "receptionist"), async (req, res): Promise<void> => {
   const parsed = CreatePatientBody.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
+    res.status(400).json({ error: formatZodError(parsed.error) });
     return;
   }
   const [patient] = await db.insert(patientsTable).values(parsed.data).returning();
@@ -111,7 +112,7 @@ router.patch("/patients/:id", authenticate, authorize("admin", "doctor", "recept
   }
   const parsed = UpdatePatientBody.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
+    res.status(400).json({ error: formatZodError(parsed.error) });
     return;
   }
   const [patient] = await db.update(patientsTable).set(parsed.data).where(eq(patientsTable.id, params.data.id)).returning();

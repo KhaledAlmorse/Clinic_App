@@ -9,6 +9,7 @@ import {
 } from "@workspace/api-zod";
 import { authenticate, type AuthRequest } from "../middlewares/authenticate";
 import { authorize } from "../middlewares/authorize";
+import { formatZodError } from "../lib/validation";
 
 const router: IRouter = Router();
 
@@ -62,7 +63,7 @@ function buildSlotsForRange(date: Date, startTime: string, endTime: string, exis
 router.get("/appointments", authenticate, authorize("admin", "doctor", "receptionist", "patient"), async (req: AuthRequest, res): Promise<void> => {
   const qp = ListAppointmentsQueryParams.safeParse(req.query);
   if (!qp.success) {
-    res.status(400).json({ error: qp.error.message });
+    res.status(400).json({ error: formatZodError(qp.error) });
     return;
   }
   const { date, startDate, endDate, doctorId, status, page = 1, limit = 20 } = qp.data;
@@ -162,7 +163,7 @@ router.get("/appointments/available-slots", authenticate, async (req: AuthReques
 router.post("/appointments", authenticate, authorize("admin", "doctor", "receptionist", "patient"), async (req: AuthRequest, res): Promise<void> => {
   const parsed = CreateAppointmentBody.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
+    res.status(400).json({ error: formatZodError(parsed.error) });
     return;
   }
 
@@ -215,7 +216,7 @@ router.patch("/appointments/:id", authenticate, authorize("admin", "doctor", "re
   }
   const parsed = UpdateAppointmentBody.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
+    res.status(400).json({ error: formatZodError(parsed.error) });
     return;
   }
   

@@ -1,10 +1,12 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useLocation, Link } from "wouter";
-import { useCreatePrescription, useListPatients, getListPrescriptionsQueryKey, getListPatientsQueryKey } from "@workspace/api-client-react";
+import { useCreatePrescription, useListPatients, getListPatientsQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
+import { api } from "@/lib/api";
+import { showErrorToast } from "@/lib/error";
 
 interface Med { name: string; dosage: string; frequency: string; duration: string; instructions: string }
 const emptyMed = (): Med => ({ name: "", dosage: "", frequency: "", duration: "", instructions: "" });
@@ -19,9 +21,12 @@ export default function NewPrescriptionPage({ patientId: prefill, visitId: visit
     { limit: 100 },
     { query: { enabled: canManagePrescriptions, queryKey: getListPatientsQueryKey({ limit: 100 }) } }
   );
+  const [doctors, setDoctors] = useState<any[]>([]);
+  const [doctorsLoading, setDoctorsLoading] = useState(true);
+  const [doctorsError, setDoctorsError] = useState("");
 
   const [patientId, setPatientId] = useState(prefill ?? "");
-  const [doctorId, setDoctorId] = useState(user?.role === "doctor" ? String(user.id) : "");
+  const [doctorId, setDoctorId] = useState("");
   const [visitId] = useState(visitPrefill ?? "");
   const [issuedAt, setIssuedAt] = useState(new Date().toISOString().split("T")[0]);
   const [notes, setNotes] = useState("");
@@ -31,6 +36,42 @@ export default function NewPrescriptionPage({ patientId: prefill, visitId: visit
     setMeds(ms => ms.map((m, idx) => idx === i ? { ...m, [k]: v } : m));
   const addMed = () => setMeds(ms => [...ms, emptyMed()]);
   const removeMed = (i: number) => setMeds(ms => ms.filter((_, idx) => idx !== i));
+
+  useEffect(() => {
+    let active = true;
+
+    if (!canManagePrescriptions) {
+      setDoctors([]);
+      setDoctorsLoading(false);
+      return;
+    }
+
+    setDoctorsLoading(true);
+    setDoctorsError("");
+    api.get("/users?role=doctor&limit=100&sort=name&order=asc")
+      .then((res) => {
+        if (!active) return;
+        setDoctors(res.data.data ?? []);
+      })
+      .catch(() => {
+        if (!active) return;
+        setDoctors([]);
+        setDoctorsError("Unable to load doctors right now.");
+      })
+      .finally(() => {
+        if (active) setDoctorsLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [canManagePrescriptions]);
+
+  useEffect(() => {
+    if (user?.role === "doctor" && user.id) {
+      setDoctorId((current) => (current === String(user.id) ? current : String(user.id)));
+    }
+  }, [user]);
 
   if (!canManagePrescriptions) {
     return (
@@ -64,11 +105,13 @@ export default function NewPrescriptionPage({ patientId: prefill, visitId: visit
           issuedAt,
         }
       });
-      queryClient.invalidateQueries({ queryKey: getListPrescriptionsQueryKey() });
+      queryClient.invalidateQueries({
+        predicate: (query) => Array.isArray(query.queryKey) && query.queryKey[0] === "/api/prescriptions",
+      });
       toast.success("Prescription created");
       navigate("/prescriptions");
-    } catch {
-      toast.error("Failed to create prescription");
+    } catch (error) {
+      showErrorToast(error, "Failed to create prescription");
     }
   };
 
@@ -92,8 +135,18 @@ export default function NewPrescriptionPage({ patientId: prefill, visitId: visit
               </select>
             </div>
             <div>
-              <label className={lbl}>Doctor ID *</label>
-              <input required type="number" value={doctorId} onChange={e => setDoctorId(e.target.value)} className={inp} />
+              <label className={lbl}>Doctor *</label>
+              <select required value={doctorId} onChange={e => setDoctorId(e.target.value)} className={inp} disabled={doctorsLoading}>
+                <option value="">{doctorsLoading ? "Loading doctors..." : "Select doctor"}</option>
+                {doctors.map((doctor) => (
+                  <option key={doctor.id} value={doctor.id}>
+                    {doctor.name}{doctor.specialty ? ` (${doctor.specialty})` : ""}
+                  </option>
+                ))}
+              </select>
+              {!doctorsLoading && doctorsError && (
+                <p className="mt-1 text-xs text-destructive">{doctorsError}</p>
+              )}
             </div>
             <div>
               <label className={lbl}>Issue Date *</label>

@@ -1,5 +1,6 @@
 import { Router } from "express";
 import multer from "multer";
+import { existsSync, mkdirSync } from "node:fs";
 import path from "node:path";
 import { eq } from "drizzle-orm";
 import { db, visitsTable } from "@workspace/db";
@@ -7,10 +8,15 @@ import { visitAttachmentsTable } from "../../../../lib/db/src/schema/visit_attac
 import { authenticate } from "../middlewares/authenticate";
 
 const router = Router();
+const uploadsDir = path.join(process.cwd(), "uploads");
+
+if (!existsSync(uploadsDir)) {
+  mkdirSync(uploadsDir, { recursive: true });
+}
 
 const storage = multer.diskStorage({
   destination: (_req, _file, cb) => {
-    cb(null, path.join(process.cwd(), "uploads"));
+    cb(null, uploadsDir);
   },
   filename: (_req, file, cb) => {
     const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);

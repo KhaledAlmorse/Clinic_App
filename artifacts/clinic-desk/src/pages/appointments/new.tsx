@@ -6,6 +6,7 @@ import { ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { api } from "@/lib/api";
+import { showErrorToast } from "@/lib/error";
 import { useEffect } from "react";
 
 export default function NewAppointmentPage({ patientId: prefill }: { patientId?: string }) {
@@ -87,8 +88,8 @@ export default function NewAppointmentPage({ patientId: prefill }: { patientId?:
       queryClient.invalidateQueries({ queryKey: getListAppointmentsQueryKey() });
       toast.success("Appointment booked");
       navigate("/appointments");
-      } catch {
-      toast.error("Failed to book appointment");
+    } catch (error) {
+      showErrorToast(error, "Failed to book appointment");
     }
   };
 

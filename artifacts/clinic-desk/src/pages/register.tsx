@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import { useLocation, Link } from "wouter";
 import { useAuth } from "@/contexts/AuthContext";
 import { useI18n } from "@/contexts/I18nContext";
+import { ErrorCard } from "@/components/ui/error-card";
+import { api } from "@/lib/api";
 
 export default function RegisterPage() {
   const { login, isAuthenticated } = useAuth();
@@ -11,7 +13,7 @@ export default function RegisterPage() {
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
+  const [error, setError] = useState<unknown>(null);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -23,21 +25,11 @@ export default function RegisterPage() {
     setError("");
     setLoading(true);
     try {
-      const res = await fetch("/api/auth/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email, phone, password, role: "patient" }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data.error || "Registration failed");
-        return;
-      }
-      localStorage.setItem("clinic_token", data.token);
+      await api.post("/auth/register", { name, email, phone, password, role: "patient" });
       await login(email, password);
       navigate("/dashboard");
-    } catch {
-      setError("Registration failed. Please try again.");
+    } catch (err: unknown) {
+      setError(err);
     } finally {
       setLoading(false);
     }
@@ -67,11 +59,7 @@ export default function RegisterPage() {
             <p className="text-muted-foreground text-sm mt-1">Register as a patient to book appointments</p>
           </div>
 
-          {error && (
-            <div className="mb-4 px-4 py-3 rounded-lg bg-destructive/10 text-destructive text-sm">
-              {error}
-            </div>
-          )}
+          <ErrorCard error={error} title="Unable to create your account" />
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>

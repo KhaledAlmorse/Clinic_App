@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
-import { useLocation } from "wouter";
+import { Link, useLocation } from "wouter";
 import { useAuth } from "@/contexts/AuthContext";
 import { useI18n } from "@/contexts/I18nContext";
+import { ErrorCard } from "@/components/ui/error-card";
 
 export default function LoginPage() {
   const { login, isAuthenticated } = useAuth();
@@ -9,7 +10,7 @@ export default function LoginPage() {
   const { t } = useI18n();
   const [email, setEmail] = useState("admin@clinicdesk.com");
   const [password, setPassword] = useState("admin123");
-  const [error, setError] = useState("");
+  const [error, setError] = useState<unknown>(null);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -24,7 +25,7 @@ export default function LoginPage() {
       await login(email, password);
       navigate("/dashboard");
     } catch (err: unknown) {
-      setError("Invalid email or password");
+      setError(err);
     } finally {
       setLoading(false);
     }
@@ -69,11 +70,7 @@ export default function LoginPage() {
             <p className="text-muted-foreground text-sm mt-1">Sign in to your ClinicDesk account</p>
           </div>
 
-          {error && (
-            <div className="mb-4 px-4 py-3 rounded-lg bg-destructive/10 text-destructive text-sm">
-              {error}
-            </div>
-          )}
+          <ErrorCard error={error} title="Unable to sign in" />
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
@@ -109,7 +106,7 @@ export default function LoginPage() {
 
           <p className="mt-6 text-center text-sm text-muted-foreground">
             Don't have an account?{" "}
-            <a href="/register" className="text-primary hover:underline font-medium">Register here</a>
+            <Link href="/register" className="text-primary hover:underline font-medium">Register here</Link>
           </p>
 
           <div className="mt-4 p-4 rounded-lg bg-muted text-xs text-muted-foreground space-y-1">

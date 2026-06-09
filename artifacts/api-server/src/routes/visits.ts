@@ -6,6 +6,7 @@ import {
 } from "@workspace/api-zod";
 import { authenticate } from "../middlewares/authenticate";
 import { authorize } from "../middlewares/authorize";
+import { formatZodError } from "../lib/validation";
 
 const router: IRouter = Router();
 
@@ -33,7 +34,7 @@ async function formatVisit(v: typeof visitsTable.$inferSelect) {
 router.get("/visits", authenticate, authorize("admin", "doctor", "receptionist"), async (req, res): Promise<void> => {
   const qp = ListVisitsQueryParams.safeParse(req.query);
   if (!qp.success) {
-    res.status(400).json({ error: qp.error.message });
+    res.status(400).json({ error: formatZodError(qp.error) });
     return;
   }
   const { patientId, doctorId, page = 1, limit = 20 } = qp.data;
@@ -56,7 +57,7 @@ router.get("/visits", authenticate, authorize("admin", "doctor", "receptionist")
 router.post("/visits", authenticate, authorize("admin", "doctor"), async (req, res): Promise<void> => {
   const parsed = CreateVisitBody.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
+    res.status(400).json({ error: formatZodError(parsed.error) });
     return;
   }
   const [visit] = await db.insert(visitsTable).values(parsed.data).returning();
@@ -92,7 +93,7 @@ router.patch("/visits/:id", authenticate, authorize("admin", "doctor"), async (r
   }
   const parsed = UpdateVisitBody.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
+    res.status(400).json({ error: formatZodError(parsed.error) });
     return;
   }
   const [visit] = await db.update(visitsTable).set(parsed.data).where(eq(visitsTable.id, params.data.id)).returning();

@@ -1,10 +1,12 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useLocation, Link } from "wouter";
-import { useCreateVisit, useListPatients, getListVisitsQueryKey } from "@workspace/api-client-react";
+import { useCreateVisit, useListPatients } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
+import { api } from "@/lib/api";
+import { showErrorToast } from "@/lib/error";
 
 export default function NewVisitPage({ patientId: prefill }: { patientId?: string }) {
   const [, navigate] = useLocation();
@@ -12,14 +14,47 @@ export default function NewVisitPage({ patientId: prefill }: { patientId?: strin
   const createMutation = useCreateVisit();
   const { user } = useAuth();
   const { data: patients } = useListPatients({ limit: 100 });
+  const [doctors, setDoctors] = useState<any[]>([]);
+  const [doctorsLoading, setDoctorsLoading] = useState(true);
+  const [doctorsError, setDoctorsError] = useState("");
 
   const [form, setForm] = useState({
     patientId: prefill ?? "",
-    doctorId: user?.role === "doctor" ? String(user.id) : "",
+    doctorId: "",
     visitDate: new Date().toISOString().split("T")[0],
     chiefComplaint: "", diagnosis: "", examinationNotes: "",
     labResults: "", treatmentPlan: "", followUpDate: "",
   });
+
+  useEffect(() => {
+    let active = true;
+
+    setDoctorsLoading(true);
+    setDoctorsError("");
+    api.get("/users?role=doctor&limit=100&sort=name&order=asc")
+      .then((res) => {
+        if (!active) return;
+        setDoctors(res.data.data ?? []);
+      })
+      .catch(() => {
+        if (!active) return;
+        setDoctors([]);
+        setDoctorsError("Unable to load doctors right now.");
+      })
+      .finally(() => {
+        if (active) setDoctorsLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (user?.role === "doctor" && user.id) {
+      setForm((f) => (f.doctorId === String(user.id) ? f : { ...f, doctorId: String(user.id) }));
+    }
+  }, [user]);
 
   const set = (k: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
     setForm(f => ({ ...f, [k]: e.target.value }));
@@ -40,11 +75,13 @@ export default function NewVisitPage({ patientId: prefill }: { patientId?: strin
           followUpDate: form.followUpDate || undefined,
         }
       });
-      queryClient.invalidateQueries({ queryKey: getListVisitsQueryKey() });
+      queryClient.invalidateQueries({
+        predicate: (query) => Array.isArray(query.queryKey) && query.queryKey[0] === "/api/visits",
+      });
       toast.success("Visit recorded");
       navigate(`/visits/${visit.id}`);
-    } catch {
-      toast.error("Failed to record visit");
+    } catch (error) {
+      showErrorToast(error, "Failed to record visit");
     }
   };
 
@@ -67,8 +104,18 @@ export default function NewVisitPage({ patientId: prefill }: { patientId?: strin
             </select>
           </div>
           <div>
-            <label className={lbl}>Doctor ID *</label>
-            <input required type="number" value={form.doctorId} onChange={set("doctorId")} className={inp} />
+            <label className={lbl}>Doctor *</label>
+            <select required value={form.doctorId} onChange={set("doctorId")} className={inp} disabled={doctorsLoading}>
+              <option value="">{doctorsLoading ? "Loading doctors..." : "Select doctor"}</option>
+              {doctors.map((doctor) => (
+                <option key={doctor.id} value={doctor.id}>
+                  {doctor.name}{doctor.specialty ? ` (${doctor.specialty})` : ""}
+                </option>
+              ))}
+            </select>
+            {!doctorsLoading && doctorsError && (
+              <p className="mt-1 text-xs text-destructive">{doctorsError}</p>
+            )}
           </div>
           <div>
             <label className={lbl}>Visit Date *</label>

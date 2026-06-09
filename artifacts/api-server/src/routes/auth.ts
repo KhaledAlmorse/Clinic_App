@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import { db, usersTable, patientsTable } from "@workspace/db";
 import { LoginBody, RegisterBody } from "@workspace/api-zod";
 import { hashPassword, comparePassword, signToken } from "../lib/auth";
+import { formatZodError } from "../lib/validation";
 import { authenticate, type AuthRequest } from "../middlewares/authenticate";
 
 const router: IRouter = Router();
@@ -22,7 +23,7 @@ function formatUser(u: typeof usersTable.$inferSelect) {
 router.post("/auth/login", async (req, res): Promise<void> => {
   const parsed = LoginBody.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
+    res.status(400).json({ error: formatZodError(parsed.error) });
     return;
   }
   const { email, password } = parsed.data;
@@ -38,7 +39,7 @@ router.post("/auth/login", async (req, res): Promise<void> => {
 router.post("/auth/register", async (req, res): Promise<void> => {
   const parsed = RegisterBody.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
+    res.status(400).json({ error: formatZodError(parsed.error) });
     return;
   }
   const { name, email, password, role } = parsed.data;

@@ -4,6 +4,7 @@ import { useGetInvoice, useRecordPayment, getGetInvoiceQueryKey, getListInvoices
 import { useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Printer } from "lucide-react";
 import { toast } from "sonner";
+import { showErrorToast } from "@/lib/error";
 
 const STATUS_COLORS: Record<string, string> = {
   pending: "bg-amber-100 text-amber-700",
@@ -31,8 +32,8 @@ export default function InvoiceDetailPage({ id }: { id: number }) {
       toast.success("Payment recorded");
       setShowPayForm(false);
       setPayAmount("");
-    } catch {
-      toast.error("Failed to record payment");
+    } catch (error) {
+      showErrorToast(error, "Failed to record payment");
     }
   };
 

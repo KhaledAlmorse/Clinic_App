@@ -7,6 +7,7 @@ import { format, addDays, startOfWeek, addWeeks } from "date-fns";
 import { useI18n } from "@/contexts/I18nContext";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
+import { showErrorToast } from "@/lib/error";
 import { useEffect } from "react";
 
 const STATUS_COLORS: Record<string, string> = {
@@ -100,8 +101,8 @@ export default function AppointmentsPage() {
       await updateMutation.mutateAsync({ id, data: { status: status as "scheduled" | "confirmed" | "in_progress" | "completed" | "cancelled" | "no_show" } });
       queryClient.invalidateQueries({ queryKey: getListAppointmentsQueryKey() });
       toast.success("Status updated");
-    } catch {
-      toast.error("Failed to update status");
+    } catch (error) {
+      showErrorToast(error, "Failed to update status");
     }
   };
 

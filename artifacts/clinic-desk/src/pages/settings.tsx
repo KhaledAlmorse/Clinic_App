@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Skeleton } from "@/components/ui/skeleton";
 import { api } from "@/lib/api";
+import { showErrorToast } from "@/lib/error";
 
 const settingsSchema = z.object({
   clinicName: z.string().min(2, "Clinic name must be at least 2 characters"),
@@ -52,7 +53,7 @@ export default function ClinicSettingsPage() {
       toast.success("Settings updated successfully");
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.error || "Failed to update settings");
+      showErrorToast(error, "Failed to update settings");
     },
   });
 

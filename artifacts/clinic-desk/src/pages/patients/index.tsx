@@ -5,6 +5,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Search, Plus, Trash2, Eye, ChevronLeft, ChevronRight } from "lucide-react";
 import { useI18n } from "@/contexts/I18nContext";
 import { toast } from "sonner";
+import { showErrorToast } from "@/lib/error";
 
 export default function PatientsPage() {
   const { t } = useI18n();
@@ -23,8 +24,8 @@ export default function PatientsPage() {
       await deleteMutation.mutateAsync({ id });
       queryClient.invalidateQueries({ queryKey: getListPatientsQueryKey() });
       toast.success("Patient deleted");
-    } catch {
-      toast.error("Failed to delete patient");
+    } catch (error) {
+      showErrorToast(error, "Failed to delete patient");
     }
   };
 

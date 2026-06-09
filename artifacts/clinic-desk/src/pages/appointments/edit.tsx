@@ -4,6 +4,7 @@ import { useGetAppointment, useUpdateAppointment, useListPatients, getGetAppoint
 import { useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
+import { showErrorToast } from "@/lib/error";
 
 const APPT_TYPES = ["consultation", "follow_up", "emergency", "checkup", "procedure"] as const;
 
@@ -56,8 +57,8 @@ export default function EditAppointmentPage({ id }: { id: number }) {
       queryClient.invalidateQueries({ queryKey: getListAppointmentsQueryKey() });
       toast.success("Appointment updated");
       navigate(`/appointments/${id}`);
-    } catch {
-      toast.error("Failed to update appointment");
+    } catch (error) {
+      showErrorToast(error, "Failed to update appointment");
     }
   };
 

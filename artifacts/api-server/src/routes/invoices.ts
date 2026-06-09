@@ -7,6 +7,7 @@ import {
 } from "@workspace/api-zod";
 import { authenticate } from "../middlewares/authenticate";
 import { authorize } from "../middlewares/authorize";
+import { formatZodError } from "../lib/validation";
 
 const router: IRouter = Router();
 
@@ -37,7 +38,7 @@ async function getWithPatient(inv: typeof invoicesTable.$inferSelect) {
 router.get("/invoices", authenticate, authorize("admin", "receptionist"), async (req, res): Promise<void> => {
   const qp = ListInvoicesQueryParams.safeParse(req.query);
   if (!qp.success) {
-    res.status(400).json({ error: qp.error.message });
+    res.status(400).json({ error: formatZodError(qp.error) });
     return;
   }
   const { patientId, status, page = 1, limit = 20 } = qp.data;
@@ -60,7 +61,7 @@ router.get("/invoices", authenticate, authorize("admin", "receptionist"), async 
 router.post("/invoices", authenticate, authorize("admin", "receptionist"), async (req, res): Promise<void> => {
   const parsed = CreateInvoiceBody.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
+    res.status(400).json({ error: formatZodError(parsed.error) });
     return;
   }
   const items = parsed.data.items as InvoiceItem[];
@@ -104,7 +105,7 @@ router.patch("/invoices/:id", authenticate, authorize("admin", "receptionist"), 
   }
   const parsed = UpdateInvoiceBody.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
+    res.status(400).json({ error: formatZodError(parsed.error) });
     return;
   }
   const updateData: Record<string, unknown> = { ...parsed.data };
@@ -129,7 +130,7 @@ router.post("/invoices/:id/pay", authenticate, authorize("admin", "receptionist"
   }
   const parsed = RecordPaymentBody.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
+    res.status(400).json({ error: formatZodError(parsed.error) });
     return;
   }
 

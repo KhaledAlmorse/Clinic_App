@@ -4,6 +4,7 @@ import { useGetPatient, useUpdatePatient, getGetPatientQueryKey, getListPatients
 import { useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
+import { showErrorToast } from "@/lib/error";
 
 export default function EditPatientPage({ id }: { id: number }) {
   const [, navigate] = useLocation();
@@ -56,8 +57,8 @@ export default function EditPatientPage({ id }: { id: number }) {
       queryClient.invalidateQueries({ queryKey: getListPatientsQueryKey() });
       toast.success("Patient updated");
       navigate(`/patients/${id}`);
-    } catch {
-      toast.error("Failed to update patient");
+    } catch (error) {
+      showErrorToast(error, "Failed to update patient");
     }
   };
 
