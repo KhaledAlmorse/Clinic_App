@@ -1,0 +1,104 @@
+You are an expert full-stack developer. Build a complete **ClinicDesk – Clinic Management System** using:
+
+### Tech Stack
+
+- **Frontend**: Next.js  (App Router) + TypeScript + Tailwind CSS + shadcn/ui
+- **Backend**: Express.js + **JavaScript** (not TypeScript)
+- **Database**: mongoose + mongodb
+- **Authentication**: NextAuth.js v5 with credentials + role-based access
+- **State Management**: Zustand + TanStack Query
+- **Forms**: React Hook Form + Zod
+- **i18n**: next-intl (Arabic & English with RTL support)
+- **Other**: Axios, date-fns, lucide-react, react-big-calendar or fullcalendar, pdf-lib or jsPDF for prescriptions/invoices
+
+### Project Architecture (Clean Architecture Style)
+
+Use a clean, layered structure:
+
+text
+
+```
+clinicdesk/
+├── backend/                  # Express.js (JavaScript)
+│   ├── src/
+│   │   ├── config/
+│   │   ├── controllers/
+│   │   ├── routes/
+│   │   ├── services/         # Business logic
+│   │   ├── repositories/     # Data access
+│   │   ├── models/           # Prisma models or plain objects
+│   │   ├── middleware/
+│   │   └── utils/
+│   ├── prisma/
+│   └── package.json
+│
+├── frontend/                 # Next.js
+│   ├── app/
+│   ├── components/
+│   ├── lib/
+│   └── ...
+│
+├── shared/                   # Shared types/constants (if needed)
+├── .env
+├── README.md
+```
+
+### Core Requirements
+
+**User Roles**:
+
+- Guest
+- Patient
+- Receptionist
+- Doctor
+- Clinic Administrator
+
+**All Features Must Be Implemented**:
+
+**Authentication & Authorization**
+
+- Register / Login
+- Role-based protection (middleware in backend + protected routes in frontend)
+- Session management
+
+**Patient Management**
+
+- Full CRUD operations
+- Search & filter patients
+
+**Appointment Management**
+
+- Book, reschedule, cancel appointments
+- Calendar view (daily/weekly)
+- Status management
+- Reminders (mock)
+
+**Medical Records**
+
+- Record examination notes, diagnosis, lab results
+- Visit history
+
+**Prescriptions**
+
+- Create prescriptions with medicine, dosage, instructions
+- Link to visits
+- Print / Export as PDF
+
+**Billing**
+
+- Generate invoices
+- Record payments (full/partial)
+
+**Dashboard & Reports**
+
+- Role-specific dashboards
+- Revenue, appointments, statistics charts
+- Export reports
+
+**Additional Features**
+
+- Arabic & English language support (RTL ready)
+- Fully responsive modern UI
+- Toast notifications
+- Proper error handling
+- Seed data for testing

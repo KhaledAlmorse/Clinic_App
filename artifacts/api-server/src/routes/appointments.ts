@@ -1,0 +1,142 @@
+import { Router, type IRouter } from "express";
+import { eq, and, gte, lte, desc, sql } from "drizzle-orm";
+import { db, appointmentsTable, patientsTable, usersTable, activityLogTable } from "@workspace/db";
+import {
+  CreateAppointmentBody, UpdateAppointmentBody,
+  GetAppointmentParams, UpdateAppointmentParams, DeleteAppointmentParams,
+  ListAppointmentsQueryParams
+} from "@workspace/api-zod";
+import { authenticate } from "../middlewares/authenticate";
+import { authorize } from "../middlewares/authorize";
+
+const router: IRouter = Router();
+
+async function formatAppointment(a: typeof appointmentsTable.$inferSelect) {
+  const [patient] = await db.select({ name: patientsTable.name }).from(patientsTable).where(eq(patientsTable.id, a.patientId));
+  const [doctor] = await db.select({ name: usersTable.name }).from(usersTable).where(eq(usersTable.id, a.doctorId));
+  return {
+    id: a.id,
+    patientId: a.patientId,
+    doctorId: a.doctorId,
+    patientName: patient?.name ?? null,
+    doctorName: doctor?.name ?? null,
+    scheduledAt: a.scheduledAt.toISOString(),
+    duration: a.duration,
+    status: a.status,
+    type: a.type,
+    notes: a.notes ?? null,
+    createdAt: a.createdAt.toISOString(),
+  };
+}
+
+router.get("/appointments", authenticate, authorize("admin", "doctor", "receptionist"), async (req, res): Promise<void> => {
+  const qp = ListAppointmentsQueryParams.safeParse(req.query);
+  if (!qp.success) {
+    res.status(400).json({ error: qp.error.message });
+    return;
+  }
+  const { date, startDate, endDate, doctorId, patientId, status, page = 1, limit = 20 } = qp.data;
+  const offset = (page - 1) * limit;
+
+  const conditions: ReturnType<typeof eq>[] = [];
+  if (doctorId) conditions.push(eq(appointmentsTable.doctorId, doctorId));
+  if (patientId) conditions.push(eq(appointmentsTable.patientId, patientId));
+  if (status) conditions.push(eq(appointmentsTable.status, status));
+  if (date) {
+    const start = new Date(date);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(date);
+    end.setHours(23, 59, 59, 999);
+    conditions.push(gte(appointmentsTable.scheduledAt, start));
+    conditions.push(lte(appointmentsTable.scheduledAt, end));
+  } else if (startDate && endDate) {
+    conditions.push(gte(appointmentsTable.scheduledAt, new Date(startDate)));
+    conditions.push(lte(appointmentsTable.scheduledAt, new Date(endDate)));
+  }
+
+  const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+
+  const [rows, [{ count }]] = await Promise.all([
+    db.select().from(appointmentsTable).where(whereClause).orderBy(desc(appointmentsTable.scheduledAt)).limit(limit).offset(offset),
+    db.select({ count: sql<number>`count(*)` }).from(appointmentsTable).where(whereClause),
+  ]);
+
+  const data = await Promise.all(rows.map(formatAppointment));
+  res.json({ data, total: Number(count), page, limit });
+});
+
+router.post("/appointments", authenticate, authorize("admin", "doctor", "receptionist"), async (req, res): Promise<void> => {
+  const parsed = CreateAppointmentBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+  const values = {
+    ...parsed.data,
+    scheduledAt: new Date(parsed.data.scheduledAt),
+    duration: parsed.data.duration ?? 30,
+  };
+  const [appt] = await db.insert(appointmentsTable).values(values).returning();
+  await db.insert(activityLogTable).values({
+    type: "appointment_booked",
+    description: `Appointment booked for patient #${appt.patientId}`,
+    entityId: appt.id,
+  });
+  res.status(201).json(await formatAppointment(appt));
+});
+
+router.get("/appointments/:id", authenticate, authorize("admin", "doctor", "receptionist"), async (req, res): Promise<void> => {
+  const raw = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+  const params = GetAppointmentParams.safeParse({ id: parseInt(raw, 10) });
+  if (!params.success) {
+    res.status(400).json({ error: "Invalid id" });
+    return;
+  }
+  const [appt] = await db.select().from(appointmentsTable).where(eq(appointmentsTable.id, params.data.id));
+  if (!appt) {
+    res.status(404).json({ error: "Appointment not found" });
+    return;
+  }
+  res.json(await formatAppointment(appt));
+});
+
+router.patch("/appointments/:id", authenticate, authorize("admin", "doctor", "receptionist"), async (req, res): Promise<void> => {
+  const raw = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+  const params = UpdateAppointmentParams.safeParse({ id: parseInt(raw, 10) });
+  if (!params.success) {
+    res.status(400).json({ error: "Invalid id" });
+    return;
+  }
+  const parsed = UpdateAppointmentBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+  const updateData: Record<string, unknown> = { ...parsed.data };
+  if (parsed.data.scheduledAt) {
+    updateData.scheduledAt = new Date(parsed.data.scheduledAt);
+  }
+  const [appt] = await db.update(appointmentsTable).set(updateData).where(eq(appointmentsTable.id, params.data.id)).returning();
+  if (!appt) {
+    res.status(404).json({ error: "Appointment not found" });
+    return;
+  }
+  res.json(await formatAppointment(appt));
+});
+
+router.delete("/appointments/:id", authenticate, authorize("admin", "receptionist"), async (req, res): Promise<void> => {
+  const raw = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+  const params = DeleteAppointmentParams.safeParse({ id: parseInt(raw, 10) });
+  if (!params.success) {
+    res.status(400).json({ error: "Invalid id" });
+    return;
+  }
+  const [appt] = await db.delete(appointmentsTable).where(eq(appointmentsTable.id, params.data.id)).returning();
+  if (!appt) {
+    res.status(404).json({ error: "Appointment not found" });
+    return;
+  }
+  res.sendStatus(204);
+});
+
+export default router;

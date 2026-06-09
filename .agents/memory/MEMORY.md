@@ -1,0 +1,1 @@
+- [ClinicDesk architecture](clinicdesk-arch.md) — JWT in localStorage `clinic_token`, custom-fetch auto-attaches; lib rebuild needed before api-server typecheck
