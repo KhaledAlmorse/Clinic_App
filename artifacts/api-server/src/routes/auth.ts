@@ -42,7 +42,27 @@ router.post("/auth/register", async (req, res): Promise<void> => {
     res.status(400).json({ error: formatZodError(parsed.error) });
     return;
   }
-  const { name, email, password, role } = parsed.data;
+  const { name, email, password, role, phone, dateOfBirth } = parsed.data;
+  
+  if (role === "patient") {
+    if (!phone || !dateOfBirth) {
+      res.status(400).json({ error: "Phone and Date of Birth are required for patients" });
+      return;
+    }
+    
+    const dob = new Date(dateOfBirth);
+    const now = new Date();
+    const age = now.getFullYear() - dob.getFullYear();
+    if (dob > now) {
+      res.status(400).json({ error: "Birthdate cannot be in the future" });
+      return;
+    }
+    if (age > 120) {
+      res.status(400).json({ error: "Birthdate is not logical (age > 120)" });
+      return;
+    }
+  }
+
   const [existing] = await db.select().from(usersTable).where(eq(usersTable.email, email));
   if (existing) {
     res.status(400).json({ error: "Email already in use" });
@@ -52,12 +72,11 @@ router.post("/auth/register", async (req, res): Promise<void> => {
   const [user] = await db.insert(usersTable).values({ name, email, passwordHash, role }).returning();
   
   if (role === "patient") {
-    const phone = (req.body as any).phone || "";
     await db.insert(patientsTable).values({
       name: user.name,
       email: user.email,
-      phone: phone,
-      dateOfBirth: "1970-01-01",
+      phone: phone!,
+      dateOfBirth: dateOfBirth!,
       gender: "other",
       userId: user.id,
     });

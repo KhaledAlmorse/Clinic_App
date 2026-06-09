@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { eq, and, gte, lte, desc, sql } from "drizzle-orm";
-import { db, appointmentsTable, patientsTable, usersTable, activityLogTable } from "@workspace/db";
+import { db, appointmentsTable, patientsTable, usersTable, activityLogTable, notificationsTable } from "@workspace/db";
 import { doctorSchedulesTable } from "../../../../lib/db/src/schema/doctor_schedules";
 import {
   CreateAppointmentBody, UpdateAppointmentBody,
@@ -183,12 +183,99 @@ router.post("/appointments", authenticate, authorize("admin", "doctor", "recepti
     scheduledAt: new Date(parsed.data.scheduledAt),
     duration: parsed.data.duration ?? 30,
   };
+
+  if (values.scheduledAt.getTime() < Date.now()) {
+    res.status(400).json({ error: "Cannot book an appointment in the past" });
+    return;
+  }
+
+  const endApptTime = new Date(values.scheduledAt.getTime() + values.duration * 60000);
+  const startOfDay = new Date(values.scheduledAt);
+  startOfDay.setHours(0, 0, 0, 0);
+  const endOfDay = new Date(values.scheduledAt);
+  endOfDay.setHours(23, 59, 59, 999);
+
+  const existingAppts = await db.select().from(appointmentsTable).where(
+    and(
+      eq(appointmentsTable.doctorId, values.doctorId),
+      gte(appointmentsTable.scheduledAt, startOfDay),
+      lte(appointmentsTable.scheduledAt, endOfDay)
+    )
+  );
+
+  const isConflict = existingAppts.some(appt => {
+    if (appt.status === 'cancelled' || appt.status === 'no_show') return false;
+    const apptEnd = new Date(appt.scheduledAt.getTime() + appt.duration * 60000);
+    return values.scheduledAt.getTime() < apptEnd.getTime() && endApptTime.getTime() > appt.scheduledAt.getTime();
+  });
+
+  if (isConflict) {
+    res.status(400).json({ error: "Doctor is already booked for this time slot" });
+    return;
+  }
+
   const [appt] = await db.insert(appointmentsTable).values(values).returning();
   await db.insert(activityLogTable).values({
     type: "appointment_booked",
     description: `Appointment booked for patient #${appt.patientId}`,
     entityId: appt.id,
   });
+
+  const timeStr = appt.scheduledAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const dateStr = appt.scheduledAt.toLocaleDateString();
+  const [patientUser] = await db.select({ userId: patientsTable.userId, name: patientsTable.name }).from(patientsTable).where(eq(patientsTable.id, appt.patientId));
+  const [doctor] = await db.select({ name: usersTable.name }).from(usersTable).where(eq(usersTable.id, appt.doctorId));
+  const receptionists = await db.select({ id: usersTable.id }).from(usersTable).where(eq(usersTable.role, 'receptionist'));
+
+  const notifications = [];
+  if (patientUser?.userId && req.userId !== patientUser.userId) {
+    notifications.push({
+      userId: patientUser.userId,
+      type: "appointment_booked",
+      title: "Appointment Confirmed",
+      message: `Your appointment with ${doctor?.name} is scheduled for ${dateStr} at ${timeStr}.`,
+      entityType: "appointment",
+      entityId: appt.id,
+    });
+  } else if (patientUser?.userId) {
+    notifications.push({
+      userId: patientUser.userId,
+      type: "appointment_booked",
+      title: "Appointment Confirmed",
+      message: `Your appointment with ${doctor?.name} is scheduled for ${dateStr} at ${timeStr}.`,
+      entityType: "appointment",
+      entityId: appt.id,
+    });
+  }
+
+  if (appt.doctorId && req.userId !== appt.doctorId) {
+    notifications.push({
+      userId: appt.doctorId,
+      type: "appointment_booked",
+      title: "New Appointment",
+      message: `New appointment booked with ${patientUser?.name || 'Patient'} on ${dateStr} at ${timeStr}.`,
+      entityType: "appointment",
+      entityId: appt.id,
+    });
+  }
+
+  for (const rec of receptionists) {
+    if (req.userId !== rec.id) {
+      notifications.push({
+        userId: rec.id,
+        type: "appointment_booked",
+        title: "New Booking",
+        message: `${patientUser?.name || 'Patient'} booked an appointment with ${doctor?.name} on ${dateStr} at ${timeStr}.`,
+        entityType: "appointment",
+        entityId: appt.id,
+      });
+    }
+  }
+
+  if (notifications.length > 0) {
+    await db.insert(notificationsTable).values(notifications);
+  }
+
   res.status(201).json(await formatAppointment(appt));
 });
 
@@ -242,6 +329,52 @@ router.patch("/appointments/:id", authenticate, authorize("admin", "doctor", "re
     res.status(404).json({ error: "Appointment not found" });
     return;
   }
+
+  if (parsed.data.status && existingAppt.status !== parsed.data.status) {
+    const timeStr = appt.scheduledAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const dateStr = appt.scheduledAt.toLocaleDateString();
+    const [patientUser] = await db.select({ userId: patientsTable.userId, name: patientsTable.name }).from(patientsTable).where(eq(patientsTable.id, appt.patientId));
+    const [doctor] = await db.select({ name: usersTable.name }).from(usersTable).where(eq(usersTable.id, appt.doctorId));
+    const receptionists = await db.select({ id: usersTable.id }).from(usersTable).where(eq(usersTable.role, 'receptionist'));
+
+    const notifications = [];
+    if (patientUser?.userId && req.userId !== patientUser.userId) {
+      notifications.push({
+        userId: patientUser.userId,
+        type: "appointment_updated",
+        title: "Appointment Update",
+        message: `Your appointment on ${dateStr} is now ${parsed.data.status}.`,
+        entityType: "appointment",
+        entityId: appt.id,
+      });
+    }
+    if (appt.doctorId && req.userId !== appt.doctorId) {
+      notifications.push({
+        userId: appt.doctorId,
+        type: "appointment_updated",
+        title: "Appointment Update",
+        message: `${patientUser?.name || 'Patient'}'s appointment on ${dateStr} is now ${parsed.data.status}.`,
+        entityType: "appointment",
+        entityId: appt.id,
+      });
+    }
+    for (const rec of receptionists) {
+      if (req.userId !== rec.id) {
+        notifications.push({
+          userId: rec.id,
+          type: "appointment_updated",
+          title: "Appointment Update",
+          message: `${patientUser?.name || 'Patient'}'s appointment with ${doctor?.name} is now ${parsed.data.status}.`,
+          entityType: "appointment",
+          entityId: appt.id,
+        });
+      }
+    }
+    if (notifications.length > 0) {
+      await db.insert(notificationsTable).values(notifications);
+    }
+  }
+
   res.json(await formatAppointment(appt));
 });
 

@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { and, asc, desc, eq, ilike, inArray, or, sql } from "drizzle-orm";
-import { db, usersTable } from "@workspace/db";
+import { db, usersTable, doctorSchedulesTable } from "@workspace/db";
 import { authenticate, type AuthRequest } from "../middlewares/authenticate";
 import { authorize } from "../middlewares/authorize";
 import { hashPassword } from "../lib/auth";
@@ -156,6 +156,14 @@ router.post("/users", authorize("admin"), async (req, res) => {
       ...data,
       passwordHash: hashPassword(password),
     }).returning();
+
+    if (user.role === "doctor") {
+      const schedules = [];
+      for (let i = 1; i <= 5; i++) {
+        schedules.push({ doctorId: user.id, dayOfWeek: i, startTime: "09:00", endTime: "17:00", isWorking: true });
+      }
+      await db.insert(doctorSchedulesTable).values(schedules);
+    }
     res.status(201).json(formatStaffUser(user));
   } catch (e: any) {
     res.status(400).json({ error: e.message });

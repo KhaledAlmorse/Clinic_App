@@ -6,7 +6,8 @@ import {
   visitsTable, 
   prescriptionsTable, 
   invoicesTable, 
-  activityLogTable 
+  activityLogTable,
+  doctorSchedulesTable
 } from '@workspace/db';
 import { sql } from 'drizzle-orm';
 import bcrypt from 'bcryptjs';
@@ -14,17 +15,40 @@ import bcrypt from 'bcryptjs';
 async function main() {
   console.log('Truncating tables...');
   // Truncate all tables and reset serial IDs
-  await db.execute(sql`TRUNCATE TABLE activity_log, invoices, prescriptions, visits, appointments, patients, users RESTART IDENTITY CASCADE;`);
+  await db.execute(sql`TRUNCATE TABLE doctor_schedules, activity_log, invoices, prescriptions, visits, appointments, patients, users RESTART IDENTITY CASCADE;`);
 
   console.log('Seeding users...');
   const users = [
     { name: 'Admin User', email: 'admin@clinicdesk.com', passwordHash: bcrypt.hashSync('admin123', 10), role: 'admin' },
     { name: 'Dr. Elizabeth Blackwell', email: 'doctor@clinicdesk.com', passwordHash: bcrypt.hashSync('doctor123', 10), role: 'doctor', specialty: 'General Medicine' },
+    { name: 'Dr. Gregory House', email: 'house@clinicdesk.com', passwordHash: bcrypt.hashSync('doctor123', 10), role: 'doctor', specialty: 'Diagnostic Medicine' },
+    { name: 'Dr. Stephen Strange', email: 'strange@clinicdesk.com', passwordHash: bcrypt.hashSync('doctor123', 10), role: 'doctor', specialty: 'Neurosurgery' },
     { name: 'Sarah receptionist', email: 'receptionist@clinicdesk.com', passwordHash: bcrypt.hashSync('recept123', 10), role: 'receptionist' }
   ];
   const seededUsers = await db.insert(usersTable).values(users).returning();
-  const doctor = seededUsers.find(u => u.role === 'doctor');
+  const doctors = seededUsers.filter(u => u.role === 'doctor');
+  const doctor = doctors[0];
   const receptionist = seededUsers.find(u => u.role === 'receptionist');
+
+  console.log('Seeding doctor schedules...');
+  const schedules = [];
+  
+  // Dr. Blackwell: Mon-Fri 09:00 - 17:00
+  for (let i = 1; i <= 5; i++) {
+    schedules.push({ doctorId: doctors[0].id, dayOfWeek: i, startTime: "09:00", endTime: "17:00", isWorking: true });
+  }
+  
+  // Dr. House: Mon, Wed, Fri 10:00 - 15:00
+  [1, 3, 5].forEach(day => {
+    schedules.push({ doctorId: doctors[1].id, dayOfWeek: day, startTime: "10:00", endTime: "15:00", isWorking: true });
+  });
+
+  // Dr. Strange: Tue, Thu 14:00 - 20:00
+  [2, 4].forEach(day => {
+    schedules.push({ doctorId: doctors[2].id, dayOfWeek: day, startTime: "14:00", endTime: "20:00", isWorking: true });
+  });
+
+  await db.insert(doctorSchedulesTable).values(schedules);
 
   console.log('Seeding patients...');
   const patients = [

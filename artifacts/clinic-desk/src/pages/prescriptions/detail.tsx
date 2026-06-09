@@ -1,11 +1,25 @@
 import { Link } from "wouter";
+import { useState } from "react";
 import { useGetPrescription, getGetPrescriptionQueryKey } from "@workspace/api-client-react";
 import { ArrowLeft, Printer } from "lucide-react";
+import { downloadHtmlAsPdf } from "@/lib/pdf";
 
 export default function PrescriptionDetailPage({ id }: { id: number }) {
+  const [isExporting, setIsExporting] = useState(false);
   const { data: rx, isLoading } = useGetPrescription(id, {
     query: { queryKey: getGetPrescriptionQueryKey(id) }
   });
+
+  const handlePrint = async () => {
+    setIsExporting(true);
+    try {
+      await downloadHtmlAsPdf("prescription-document", `prescription-${rx?.id}.pdf`);
+    } catch (e) {
+      console.error("Failed to generate PDF", e);
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   if (isLoading) return <div className="p-8 text-center text-muted-foreground">Loading...</div>;
   if (!rx) return <div className="p-8 text-center text-muted-foreground">Prescription not found</div>;
@@ -17,12 +31,16 @@ export default function PrescriptionDetailPage({ id }: { id: number }) {
           <ArrowLeft size={18}/>
         </Link>
         <h1 className="text-2xl font-bold flex-1">Prescription #{rx.id}</h1>
-        <button onClick={() => window.print()} className="flex items-center gap-2 px-4 py-2 rounded-lg border border-border text-sm hover:bg-muted">
-          <Printer size={15} /> Print
+        <button 
+          onClick={handlePrint} 
+          disabled={isExporting}
+          className="flex items-center gap-2 px-4 py-2 rounded-lg border border-border text-sm hover:bg-muted disabled:opacity-50"
+        >
+          <Printer size={15} /> {isExporting ? "Generating..." : "Download PDF"}
         </button>
       </div>
 
-      <div className="bg-card border border-card-border rounded-xl p-6 print:border-2 print:p-8">
+      <div id="prescription-document" className="bg-card border border-card-border rounded-xl p-6 print:border-2 print:p-8">
         <div className="text-center mb-6 pb-4 border-b border-border">
           <h2 className="text-xl font-bold text-foreground">ClinicDesk Medical Center</h2>
           <p className="text-muted-foreground text-sm">Prescription</p>

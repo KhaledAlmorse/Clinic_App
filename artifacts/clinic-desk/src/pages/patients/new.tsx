@@ -54,7 +54,7 @@ export default function NewPatientPage() {
           <Field label="Full Name *"><input required value={form.name} onChange={set("name")} className={inputCls} /></Field>
           <Field label="Email *"><input required type="email" value={form.email} onChange={set("email")} className={inputCls} /></Field>
           <Field label="Phone *"><input required value={form.phone} onChange={set("phone")} className={inputCls} /></Field>
-          <Field label="Date of Birth *"><input required type="date" value={form.dateOfBirth} onChange={set("dateOfBirth")} className={inputCls} /></Field>
+          <Field label="Date of Birth *"><input required type="date" max={new Date().toISOString().split('T')[0]} value={form.dateOfBirth} onChange={set("dateOfBirth")} className={inputCls} /></Field>
           <Field label="Gender *">
             <select required value={form.gender} onChange={set("gender")} className={inputCls}>
               <option value="male">Male</option>

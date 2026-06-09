@@ -58,9 +58,24 @@ router.get("/patients", authenticate, authorize("admin", "doctor", "receptionist
 router.post("/patients", authenticate, authorize("admin", "doctor", "receptionist"), async (req, res): Promise<void> => {
   const parsed = CreatePatientBody.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: formatZodError(parsed.error) });
+    res.status(400).json({ error: parsed.error.issues.map(i => i.message).join(", ") });
     return;
   }
+
+  if (parsed.data.dateOfBirth) {
+    const dob = new Date(parsed.data.dateOfBirth);
+    const now = new Date();
+    const age = now.getFullYear() - dob.getFullYear();
+    if (dob > now) {
+      res.status(400).json({ error: "Birthdate cannot be in the future" });
+      return;
+    }
+    if (age > 120) {
+      res.status(400).json({ error: "Birthdate is not logical (age > 120)" });
+      return;
+    }
+  }
+
   const [patient] = await db.insert(patientsTable).values(parsed.data).returning();
   await db.insert(activityLogTable).values({
     type: "patient_created",
@@ -112,9 +127,24 @@ router.patch("/patients/:id", authenticate, authorize("admin", "doctor", "recept
   }
   const parsed = UpdatePatientBody.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: formatZodError(parsed.error) });
+    res.status(400).json({ error: parsed.error.issues.map(i => i.message).join(", ") });
     return;
   }
+
+  if (parsed.data.dateOfBirth) {
+    const dob = new Date(parsed.data.dateOfBirth);
+    const now = new Date();
+    const age = now.getFullYear() - dob.getFullYear();
+    if (dob > now) {
+      res.status(400).json({ error: "Birthdate cannot be in the future" });
+      return;
+    }
+    if (age > 120) {
+      res.status(400).json({ error: "Birthdate is not logical (age > 120)" });
+      return;
+    }
+  }
+
   const [patient] = await db.update(patientsTable).set(parsed.data).where(eq(patientsTable.id, params.data.id)).returning();
   if (!patient) {
     res.status(404).json({ error: "Patient not found" });

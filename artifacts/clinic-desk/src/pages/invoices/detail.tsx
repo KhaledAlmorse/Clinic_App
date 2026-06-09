@@ -2,9 +2,10 @@ import { useState } from "react";
 import { Link } from "wouter";
 import { useGetInvoice, useRecordPayment, getGetInvoiceQueryKey, getListInvoicesQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Printer } from "lucide-react";
+import { ArrowLeft, Printer, CreditCard } from "lucide-react";
 import { toast } from "sonner";
 import { showErrorToast } from "@/lib/error";
+import { downloadHtmlAsPdf } from "@/lib/pdf";
 
 const STATUS_COLORS: Record<string, string> = {
   pending: "bg-amber-100 text-amber-700",
@@ -17,6 +18,7 @@ export default function InvoiceDetailPage({ id }: { id: number }) {
   const { data: invoice, isLoading } = useGetInvoice(id, {
     query: { queryKey: getGetInvoiceQueryKey(id) }
   });
+  const [isExporting, setIsExporting] = useState(false);
   const queryClient = useQueryClient();
   const payMutation = useRecordPayment();
   const [payAmount, setPayAmount] = useState("");
@@ -37,6 +39,18 @@ export default function InvoiceDetailPage({ id }: { id: number }) {
     }
   };
 
+  const handlePrint = async () => {
+    setIsExporting(true);
+    try {
+      await downloadHtmlAsPdf("invoice-document", `invoice-${invoice?.id}.pdf`);
+    } catch (e) {
+      toast.error("Failed to generate PDF");
+      console.error(e);
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   if (isLoading) return <div className="p-8 text-center text-muted-foreground">Loading...</div>;
   if (!invoice) return <div className="p-8 text-center text-muted-foreground">Invoice not found</div>;
 
@@ -50,12 +64,12 @@ export default function InvoiceDetailPage({ id }: { id: number }) {
         </Link>
         <h1 className="text-2xl font-bold flex-1">Invoice #{invoice.id}</h1>
         {invoice.status !== "paid" && (
-          <button onClick={() => setShowPayForm(v => !v)} className="px-4 py-2 rounded-lg bg-emerald-500 text-white text-sm font-medium hover:bg-emerald-600">
-            Record Payment
+          <button onClick={() => setShowPayForm(v => !v)} className="px-4 py-2 rounded-lg bg-emerald-500 text-white text-sm font-medium hover:bg-emerald-600 flex items-center gap-2">
+            <CreditCard size={15} /> Record Payment
           </button>
         )}
-        <button onClick={() => window.print()} className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border text-sm hover:bg-muted">
-          <Printer size={15} /> Print
+        <button onClick={handlePrint} disabled={isExporting} className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border text-sm hover:bg-muted disabled:opacity-50">
+          <Printer size={15} /> {isExporting ? "Generating..." : "Download PDF"}
         </button>
       </div>
 
@@ -89,7 +103,7 @@ export default function InvoiceDetailPage({ id }: { id: number }) {
         </form>
       )}
 
-      <div className="bg-card border border-card-border rounded-xl p-6">
+      <div id="invoice-document" className="bg-card border border-card-border rounded-xl p-6 print:border-2 print:p-8">
         <div className="flex justify-between items-start mb-6 pb-4 border-b border-border">
           <div>
             <h2 className="text-xl font-bold">INVOICE</h2>

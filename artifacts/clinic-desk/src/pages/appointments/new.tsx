@@ -124,7 +124,7 @@ export default function NewAppointmentPage({ patientId: prefill }: { patientId?:
           </div>
           <div>
             <label className={lbl}>Date *</label>
-            <input required type="date" value={selectedDate} onChange={(e) => { setSelectedDate(e.target.value); setForm(f => ({ ...f, scheduledAt: "" })); }} className={inp} />
+            <input required type="date" min={new Date().toISOString().split('T')[0]} value={selectedDate} onChange={(e) => { setSelectedDate(e.target.value); setForm(f => ({ ...f, scheduledAt: "" })); }} className={inp} />
           </div>
           <div>
             <label className={lbl}>Duration (minutes)</label>

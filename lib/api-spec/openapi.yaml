@@ -769,6 +769,10 @@ components:
         role:
           type: string
           enum: [patient, receptionist, doctor, admin]
+        phone:
+          type: string
+        dateOfBirth:
+          type: string
 
     AuthResponse:
       type: object

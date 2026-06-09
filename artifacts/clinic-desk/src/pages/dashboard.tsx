@@ -25,6 +25,7 @@ import {
 import { format } from "date-fns";
 import { useAuth } from "@/contexts/AuthContext";
 import { useI18n } from "@/contexts/I18nContext";
+import { Link } from "wouter";
 import {
   Card,
   CardContent,
@@ -87,6 +88,37 @@ const revenueChartConfig = {
 
 export default function DashboardPage() {
   const { user } = useAuth();
+  if (user?.role === "patient") {
+    return <PatientDashboard />;
+  }
+  return <StaffDashboard />;
+}
+
+function PatientDashboard() {
+  const { user } = useAuth();
+
+  return (
+    <div className="p-6 space-y-6 max-w-4xl mx-auto mt-8">
+      <div className="bg-card border border-card-border rounded-xl p-8 text-center space-y-4">
+        <h1 className="text-3xl font-bold text-foreground">Welcome to ClinicDesk, {user?.name?.split(" ")[0]}!</h1>
+        <p className="text-muted-foreground max-w-xl mx-auto">
+          From your dashboard, you can securely book new appointments, manage your existing schedule, access your medical prescriptions, and view your invoices.
+        </p>
+        <div className="pt-6 flex justify-center gap-4 flex-wrap">
+          <Link href="/appointments" className="px-5 py-2.5 bg-primary text-primary-foreground rounded-lg font-medium hover:opacity-90 transition-opacity">
+            My Appointments
+          </Link>
+          <Link href="/appointments/new" className="px-5 py-2.5 bg-emerald-500 text-white rounded-lg font-medium hover:bg-emerald-600 transition-colors">
+            Book Appointment
+          </Link>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function StaffDashboard() {
+  const { user } = useAuth();
   const { t } = useI18n();
   const { data: stats } = useGetDashboardStats();
   const { data: revenue } = useGetRevenueReport();
@@ -106,8 +138,8 @@ export default function DashboardPage() {
   const monthlyGrowth =
     latestPoint && previousPoint && previousPoint.revenue > 0
       ? ((latestPoint.revenue - previousPoint.revenue) /
-          previousPoint.revenue) *
-        100
+        previousPoint.revenue) *
+      100
       : null;
   const peakPoint = revenueData.reduce(
     (best, current) =>

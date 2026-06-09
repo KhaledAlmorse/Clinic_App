@@ -12,6 +12,7 @@ export default function RegisterPage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
+  const [dateOfBirth, setDateOfBirth] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<unknown>(null);
   const [loading, setLoading] = useState(false);
@@ -25,7 +26,7 @@ export default function RegisterPage() {
     setError("");
     setLoading(true);
     try {
-      await api.post("/auth/register", { name, email, phone, password, role: "patient" });
+      await api.post("/auth/register", { name, email, phone, dateOfBirth, password, role: "patient" });
       await login(email, password);
       navigate("/dashboard");
     } catch (err: unknown) {
@@ -92,6 +93,17 @@ export default function RegisterPage() {
                 onChange={e => setPhone(e.target.value)}
                 className="w-full px-3 py-2.5 rounded-lg border border-border bg-card text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                 placeholder="+971 XX XXX XXXX"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-1.5">Date of Birth</label>
+              <input
+                type="date"
+                max={new Date().toISOString().split('T')[0]}
+                value={dateOfBirth}
+                onChange={e => setDateOfBirth(e.target.value)}
+                className="w-full px-3 py-2.5 rounded-lg border border-border bg-card text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                 required
               />
             </div>
