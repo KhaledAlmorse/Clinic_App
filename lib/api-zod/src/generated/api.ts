@@ -53,7 +53,8 @@ export const RegisterBody = zod.object({
   "password": zod.string().min(registerBodyPasswordMin),
   "role": zod.enum(['patient', 'receptionist', 'doctor', 'admin']),
   "phone": zod.string().optional(),
-  "dateOfBirth": zod.string().optional()
+  "dateOfBirth": zod.string().optional(),
+  "gender": zod.enum(['male', 'female']).optional()
 })
 
 

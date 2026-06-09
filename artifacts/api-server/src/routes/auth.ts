@@ -42,7 +42,7 @@ router.post("/auth/register", async (req, res): Promise<void> => {
     res.status(400).json({ error: formatZodError(parsed.error) });
     return;
   }
-  const { name, email, password, role, phone, dateOfBirth } = parsed.data;
+  const { name, email, password, role, phone, dateOfBirth, gender } = parsed.data;
   
   if (role === "patient") {
     if (!phone || !dateOfBirth) {
@@ -77,7 +77,7 @@ router.post("/auth/register", async (req, res): Promise<void> => {
       email: user.email,
       phone: phone!,
       dateOfBirth: dateOfBirth!,
-      gender: "other",
+      gender: (gender as any) || "male",
       userId: user.id,
     });
   }

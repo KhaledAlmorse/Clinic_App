@@ -773,6 +773,9 @@ components:
           type: string
         dateOfBirth:
           type: string
+        gender:
+          type: string
+          enum: [male, female]
 
     AuthResponse:
       type: object

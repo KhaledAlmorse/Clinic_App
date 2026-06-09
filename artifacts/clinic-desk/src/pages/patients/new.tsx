@@ -59,7 +59,6 @@ export default function NewPatientPage() {
             <select required value={form.gender} onChange={set("gender")} className={inputCls}>
               <option value="male">Male</option>
               <option value="female">Female</option>
-              <option value="other">Other</option>
             </select>
           </Field>
           <Field label="Blood Type">

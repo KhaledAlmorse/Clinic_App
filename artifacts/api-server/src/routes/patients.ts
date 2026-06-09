@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq, ilike, or, desc, sql } from "drizzle-orm";
+import { eq, ilike, or, desc, sql, and, ne } from "drizzle-orm";
 import { db, patientsTable, activityLogTable } from "@workspace/db";
 import { CreatePatientBody, UpdatePatientBody, GetPatientParams, UpdatePatientParams, DeletePatientParams, ListPatientsQueryParams } from "@workspace/api-zod";
 import { authenticate } from "../middlewares/authenticate";
@@ -76,6 +76,12 @@ router.post("/patients", authenticate, authorize("admin", "doctor", "receptionis
     }
   }
 
+  const [existing] = await db.select().from(patientsTable).where(eq(patientsTable.email, parsed.data.email));
+  if (existing) {
+    res.status(400).json({ error: "A patient with this email already exists" });
+    return;
+  }
+
   const [patient] = await db.insert(patientsTable).values(parsed.data).returning();
   await db.insert(activityLogTable).values({
     type: "patient_created",
@@ -141,6 +147,19 @@ router.patch("/patients/:id", authenticate, authorize("admin", "doctor", "recept
     }
     if (age > 120) {
       res.status(400).json({ error: "Birthdate is not logical (age > 120)" });
+      return;
+    }
+  }
+
+  if (parsed.data.email) {
+    const [existing] = await db.select().from(patientsTable).where(
+      and(
+        eq(patientsTable.email, parsed.data.email),
+        ne(patientsTable.id, params.data.id)
+      )
+    );
+    if (existing) {
+      res.status(400).json({ error: "A patient with this email already exists" });
       return;
     }
   }
