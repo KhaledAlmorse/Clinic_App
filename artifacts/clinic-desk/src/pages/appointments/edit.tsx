@@ -18,7 +18,7 @@ export default function EditAppointmentPage({ id }: { id: number }) {
   const updateMutation = useUpdateAppointment();
 
   const [form, setForm] = useState({
-    patientId: "", doctorId: "2", scheduledAt: "", type: "consultation" as string, duration: "30", notes: ""
+    patientId: "", doctorId: "2", scheduledAt: "", type: "consultation" as string, notes: ""
   });
 
   useEffect(() => {
@@ -30,7 +30,6 @@ export default function EditAppointmentPage({ id }: { id: number }) {
         doctorId: String(appt.doctorId ?? 2),
         scheduledAt: localISO,
         type: appt.type ?? "consultation",
-        duration: String(appt.duration ?? 30),
         notes: appt.notes ?? "",
       });
     }
@@ -49,7 +48,6 @@ export default function EditAppointmentPage({ id }: { id: number }) {
           doctorId: parseInt(form.doctorId),
           scheduledAt: new Date(form.scheduledAt).toISOString(),
           type: form.type as any,
-          duration: parseInt(form.duration),
           notes: form.notes || undefined,
         }
       });
@@ -89,11 +87,6 @@ export default function EditAppointmentPage({ id }: { id: number }) {
           </Field>
           <Field label="Date & Time *">
             <input required type="datetime-local" value={form.scheduledAt} onChange={set("scheduledAt")} className={inp} />
-          </Field>
-          <Field label="Duration (min)">
-            <select value={form.duration} onChange={set("duration")} className={inp}>
-              {[15, 20, 30, 45, 60, 90].map(m => <option key={m} value={m}>{m} min</option>)}
-            </select>
           </Field>
           <Field label="Type">
             <select value={form.type} onChange={set("type")} className={inp}>

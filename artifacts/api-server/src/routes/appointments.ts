@@ -23,7 +23,6 @@ async function formatAppointment(a: typeof appointmentsTable.$inferSelect) {
     patientName: patient?.name ?? null,
     doctorName: doctor?.name ?? null,
     scheduledAt: a.scheduledAt.toISOString(),
-    duration: a.duration,
     status: a.status,
     type: a.type,
     notes: a.notes ?? null,
@@ -31,7 +30,7 @@ async function formatAppointment(a: typeof appointmentsTable.$inferSelect) {
   };
 }
 
-function buildSlotsForRange(date: Date, startTime: string, endTime: string, existingAppts: Array<{ scheduledAt: Date; duration: number }>) {
+function buildSlotsForRange(date: Date, startTime: string, endTime: string, existingAppts: Array<{ scheduledAt: Date }>) {
   const [startHour, startMin] = startTime.split(":").map(Number);
   const [endHour, endMin] = endTime.split(":").map(Number);
   const slots: string[] = [];
@@ -46,7 +45,7 @@ function buildSlotsForRange(date: Date, startTime: string, endTime: string, exis
   while (current.getTime() + slotDuration <= endDate.getTime()) {
     const slotEnd = new Date(current.getTime() + slotDuration);
     const isConflict = existingAppts.some((appt) => {
-      const apptEnd = new Date(appt.scheduledAt.getTime() + appt.duration * 60 * 1000);
+      const apptEnd = new Date(appt.scheduledAt.getTime() + 30 * 60000);
       return current.getTime() < apptEnd.getTime() && slotEnd.getTime() > appt.scheduledAt.getTime();
     });
 
@@ -122,7 +121,7 @@ router.get("/appointments/available-slots", authenticate, async (req: AuthReques
   endOfDay.setHours(23, 59, 59, 999);
 
   const existingAppts = await db
-    .select({ scheduledAt: appointmentsTable.scheduledAt, duration: appointmentsTable.duration })
+    .select({ scheduledAt: appointmentsTable.scheduledAt })
     .from(appointmentsTable)
     .where(
       and(
@@ -181,7 +180,6 @@ router.post("/appointments", authenticate, authorize("admin", "doctor", "recepti
     ...parsed.data,
     patientId,
     scheduledAt: new Date(parsed.data.scheduledAt),
-    duration: parsed.data.duration ?? 30,
   };
 
   if (values.scheduledAt.getTime() < Date.now()) {
@@ -189,7 +187,7 @@ router.post("/appointments", authenticate, authorize("admin", "doctor", "recepti
     return;
   }
 
-  const endApptTime = new Date(values.scheduledAt.getTime() + values.duration * 60000);
+  const endApptTime = new Date(values.scheduledAt.getTime() + 30 * 60000);
   const startOfDay = new Date(values.scheduledAt);
   startOfDay.setHours(0, 0, 0, 0);
   const endOfDay = new Date(values.scheduledAt);
@@ -205,7 +203,7 @@ router.post("/appointments", authenticate, authorize("admin", "doctor", "recepti
 
   const isConflict = existingAppts.some(appt => {
     if (appt.status === 'cancelled' || appt.status === 'no_show') return false;
-    const apptEnd = new Date(appt.scheduledAt.getTime() + appt.duration * 60000);
+    const apptEnd = new Date(appt.scheduledAt.getTime() + 30 * 60000);
     return values.scheduledAt.getTime() < apptEnd.getTime() && endApptTime.getTime() > appt.scheduledAt.getTime();
   });
 

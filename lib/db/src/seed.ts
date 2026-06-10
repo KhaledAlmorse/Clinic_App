@@ -6,7 +6,7 @@ import { visitsTable } from "./schema/visits";
 import { prescriptionsTable } from "./schema/prescriptions";
 import { invoicesTable } from "./schema/invoices";
 import { activityLogTable } from "./schema/activity_log";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 
 const DEMO_USERS = [
   {
@@ -223,6 +223,9 @@ function randomPick<T>(arr: readonly T[]): T {
 
 async function main() {
   console.log("Seeding ClinicDesk...");
+  
+  console.log("Truncating tables...");
+  await db.execute(sql`TRUNCATE TABLE doctor_schedules, visit_attachments, activity_log, invoices, prescriptions, visits, appointments, patients, users RESTART IDENTITY CASCADE;`);
 
   // Helper: find or create
   const userIds: Record<string, number> = {};
@@ -382,7 +385,6 @@ async function main() {
       patientId: patientIds[a.patientIdx],
       doctorId: a.doctorId,
       scheduledAt,
-      duration: 30,
       status: a.status,
       type: a.type,
       notes: a.status === "completed" ? "Patient seen, all good." : null,

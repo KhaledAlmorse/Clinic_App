@@ -61,7 +61,6 @@ export default function AppointmentDetailPage({ id }: { id: number }) {
           <InfoCard icon={<User size={18} />} label="Patient" value={appt.patientName ?? `#${appt.patientId}`} />
           <InfoCard icon={<User size={18} />} label="Doctor" value={appt.doctorName ?? `#${appt.doctorId}`} />
           <InfoCard icon={<Calendar size={18} />} label="Date & Time" value={format(new Date(appt.scheduledAt), "MMM d, yyyy h:mm a")} />
-          <InfoCard icon={<Clock size={18} />} label="Duration" value={`${appt.duration ?? 30} minutes`} />
           <InfoCard icon={<FileText size={18} />} label="Type" value={appt.type?.replace("_", " ") ?? "Consultation"} />
         </div>
 

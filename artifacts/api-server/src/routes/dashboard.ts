@@ -73,7 +73,6 @@ router.get("/dashboard/appointments-today", authenticate, authorize("admin", "do
       patientName: patient?.name ?? null,
       doctorName: doctor?.name ?? null,
       scheduledAt: a.scheduledAt.toISOString(),
-      duration: a.duration,
       status: a.status,
       type: a.type,
       notes: a.notes ?? null,

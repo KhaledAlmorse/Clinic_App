@@ -87,7 +87,6 @@ async function main() {
       patientId: patientJohn.id,
       doctorId: doctor.id,
       scheduledAt: new Date(Date.now() - 24 * 60 * 60 * 1000), // Yesterday
-      duration: 30,
       status: 'completed',
       type: 'consultation',
       notes: 'John complained of severe back pain.'
@@ -96,7 +95,6 @@ async function main() {
       patientId: patientJane.id,
       doctorId: doctor.id,
       scheduledAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // Tomorrow
-      duration: 30,
       status: 'scheduled',
       type: 'checkup',
       notes: 'Routine prenatal follow-up.'

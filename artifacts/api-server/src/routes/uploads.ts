@@ -24,7 +24,15 @@ const storage = multer.diskStorage({
   },
 });
 
-const upload = multer({ storage });
+const fileFilter = (_req: any, file: any, cb: any) => {
+  if (file.mimetype.startsWith('image/') || file.mimetype === 'application/pdf') {
+    cb(null, true);
+  } else {
+    cb(new Error('Invalid file type. Only images and PDFs are allowed.'), false);
+  }
+};
+
+const upload = multer({ storage, fileFilter });
 
 router.post("/visits/:visitId/attachments", authenticate, upload.single("file"), async (req, res): Promise<void> => {
   const rawVisitId = Array.isArray(req.params.visitId) ? req.params.visitId[0] : req.params.visitId;

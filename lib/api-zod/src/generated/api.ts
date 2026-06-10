@@ -220,7 +220,6 @@ export const ListAppointmentsResponse = zod.object({
   "patientName": zod.string().nullish(),
   "doctorName": zod.string().nullish(),
   "scheduledAt": zod.string(),
-  "duration": zod.number().optional().describe('Duration in minutes'),
   "status": zod.enum(['scheduled', 'confirmed', 'in_progress', 'completed', 'cancelled', 'no_show']),
   "type": zod.enum(['consultation', 'follow_up', 'emergency', 'checkup', 'procedure']),
   "notes": zod.string().nullish(),
@@ -235,13 +234,10 @@ export const ListAppointmentsResponse = zod.object({
 /**
  * @summary Book appointment
  */
-export const createAppointmentBodyDurationDefault = 30;
-
 export const CreateAppointmentBody = zod.object({
   "patientId": zod.number(),
   "doctorId": zod.number(),
   "scheduledAt": zod.string(),
-  "duration": zod.number().default(createAppointmentBodyDurationDefault),
   "type": zod.enum(['consultation', 'follow_up', 'emergency', 'checkup', 'procedure']),
   "notes": zod.string().optional()
 })
@@ -273,7 +269,6 @@ export const GetAppointmentResponse = zod.object({
   "patientName": zod.string().nullish(),
   "doctorName": zod.string().nullish(),
   "scheduledAt": zod.string(),
-  "duration": zod.number().optional().describe('Duration in minutes'),
   "status": zod.enum(['scheduled', 'confirmed', 'in_progress', 'completed', 'cancelled', 'no_show']),
   "type": zod.enum(['consultation', 'follow_up', 'emergency', 'checkup', 'procedure']),
   "notes": zod.string().nullish(),
@@ -292,7 +287,6 @@ export const UpdateAppointmentBody = zod.object({
   "patientId": zod.number().optional(),
   "doctorId": zod.number().optional(),
   "scheduledAt": zod.string().optional(),
-  "duration": zod.number().optional(),
   "status": zod.enum(['scheduled', 'confirmed', 'in_progress', 'completed', 'cancelled', 'no_show']).optional(),
   "type": zod.enum(['consultation', 'follow_up', 'emergency', 'checkup', 'procedure']).optional(),
   "notes": zod.string().optional()
@@ -305,7 +299,6 @@ export const UpdateAppointmentResponse = zod.object({
   "patientName": zod.string().nullish(),
   "doctorName": zod.string().nullish(),
   "scheduledAt": zod.string(),
-  "duration": zod.number().optional().describe('Duration in minutes'),
   "status": zod.enum(['scheduled', 'confirmed', 'in_progress', 'completed', 'cancelled', 'no_show']),
   "type": zod.enum(['consultation', 'follow_up', 'emergency', 'checkup', 'procedure']),
   "notes": zod.string().nullish(),
@@ -748,7 +741,6 @@ export const GetTodayAppointmentsResponseItem = zod.object({
   "patientName": zod.string().nullish(),
   "doctorName": zod.string().nullish(),
   "scheduledAt": zod.string(),
-  "duration": zod.number().optional().describe('Duration in minutes'),
   "status": zod.enum(['scheduled', 'confirmed', 'in_progress', 'completed', 'cancelled', 'no_show']),
   "type": zod.enum(['consultation', 'follow_up', 'emergency', 'checkup', 'procedure']),
   "notes": zod.string().nullish(),

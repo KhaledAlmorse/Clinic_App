@@ -21,7 +21,7 @@ const STATUS_COLORS: Record<string, string> = {
 
 const STATUSES = ["scheduled", "confirmed", "in_progress", "completed", "cancelled", "no_show"];
 
-type ApptRow = { id: number; scheduledAt: string; patientName?: string | null; doctorName?: string | null; status: string; duration?: number };
+type ApptRow = { id: number; scheduledAt: string; patientName?: string | null; doctorName?: string | null; status: string; type?: string; };
 
 function WeeklyCalendar({ appointments }: { appointments: ApptRow[] }) {
   const [weekOffset, setWeekOffset] = useState(0);
@@ -170,7 +170,6 @@ export default function AppointmentsPage() {
                     <th className="text-left px-4 py-3 text-muted-foreground font-medium">Doctor</th>
                     <th className="text-left px-4 py-3 text-muted-foreground font-medium">Date & Time</th>
                     <th className="text-left px-4 py-3 text-muted-foreground font-medium">Type</th>
-                    <th className="text-left px-4 py-3 text-muted-foreground font-medium">Duration</th>
                     <th className="text-left px-4 py-3 text-muted-foreground font-medium">Status</th>
                     <th className="text-right px-4 py-3 text-muted-foreground font-medium">Actions</th>
                   </tr>
@@ -182,7 +181,6 @@ export default function AppointmentsPage() {
                       <td className="px-4 py-3 text-muted-foreground">{appt.doctorName ?? "—"}</td>
                       <td className="px-4 py-3 text-muted-foreground">{format(new Date(appt.scheduledAt), "MMM d, yyyy h:mm a")}</td>
                       <td className="px-4 py-3 capitalize text-muted-foreground">{appt.type?.replace("_", " ")}</td>
-                      <td className="px-4 py-3 text-muted-foreground">{appt.duration}m</td>
                       <td className="px-4 py-3">
                         <select
                           value={appt.status}

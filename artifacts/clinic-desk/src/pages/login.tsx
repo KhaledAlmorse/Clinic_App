@@ -8,8 +8,8 @@ export default function LoginPage() {
   const { login, isAuthenticated } = useAuth();
   const [, navigate] = useLocation();
   const { t } = useI18n();
-  const [email, setEmail] = useState("admin@clinicdesk.com");
-  const [password, setPassword] = useState("admin123");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState<unknown>(null);
   const [loading, setLoading] = useState(false);
 
@@ -108,13 +108,6 @@ export default function LoginPage() {
             Don't have an account?{" "}
             <Link href="/register" className="text-primary hover:underline font-medium">Register here</Link>
           </p>
-
-          <div className="mt-4 p-4 rounded-lg bg-muted text-xs text-muted-foreground space-y-1">
-            <p className="font-medium text-foreground">Demo credentials:</p>
-            <p>admin@clinicdesk.com / admin123</p>
-            <p>doctor@clinicdesk.com / doctor123</p>
-            <p>receptionist@clinicdesk.com / recept123</p>
-          </div>
         </div>
       </div>
     </div>

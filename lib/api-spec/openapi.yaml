@@ -925,9 +925,6 @@ components:
           type: ["string", "null"]
         scheduledAt:
           type: string
-        duration:
-          type: integer
-          description: Duration in minutes
         status:
           type: string
           enum: [scheduled, confirmed, in_progress, completed, cancelled, no_show]
@@ -949,9 +946,6 @@ components:
           type: integer
         scheduledAt:
           type: string
-        duration:
-          type: integer
-          default: 30
         type:
           type: string
           enum: [consultation, follow_up, emergency, checkup, procedure]
@@ -967,8 +961,6 @@ components:
           type: integer
         scheduledAt:
           type: string
-        duration:
-          type: integer
         status:
           type: string
           enum: [scheduled, confirmed, in_progress, completed, cancelled, no_show]

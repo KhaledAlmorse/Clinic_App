@@ -9,7 +9,6 @@ export const appointmentsTable = pgTable("appointments", {
   patientId: integer("patient_id").references(() => patientsTable.id).notNull(),
   doctorId: integer("doctor_id").references(() => usersTable.id).notNull(),
   scheduledAt: timestamp("scheduled_at", { withTimezone: true }).notNull(),
-  duration: integer("duration").notNull().default(30), // minutes
   status: text("status").notNull().default("scheduled"), // scheduled, confirmed, in_progress, completed, cancelled, no_show
   type: text("type").notNull().default("consultation"), // consultation, follow_up, emergency, checkup, procedure
   notes: text("notes"),

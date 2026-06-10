@@ -41,7 +41,6 @@ export default function NewAppointmentPage({ patientId: prefill }: { patientId?:
     patientId: prefill ?? "",
     doctorId: user?.role === "doctor" ? String(user.id) : "",
     scheduledAt: "",
-    duration: "30",
     type: "consultation" as const,
     notes: "",
   });
@@ -80,7 +79,6 @@ export default function NewAppointmentPage({ patientId: prefill }: { patientId?:
           patientId: parseInt(form.patientId),
           doctorId: parseInt(form.doctorId),
           scheduledAt: new Date(form.scheduledAt).toISOString(),
-          duration: parseInt(form.duration),
           type: form.type,
           notes: form.notes || undefined,
         }
@@ -125,12 +123,6 @@ export default function NewAppointmentPage({ patientId: prefill }: { patientId?:
           <div>
             <label className={lbl}>Date *</label>
             <input required type="date" min={new Date().toISOString().split('T')[0]} value={selectedDate} onChange={(e) => { setSelectedDate(e.target.value); setForm(f => ({ ...f, scheduledAt: "" })); }} className={inp} />
-          </div>
-          <div>
-            <label className={lbl}>Duration (minutes)</label>
-            <select value={form.duration} onChange={set("duration")} className={inp}>
-              {[15, 20, 30, 45, 60, 90].map(d => <option key={d} value={d}>{d} min</option>)}
-            </select>
           </div>
           <div className="sm:col-span-2">
             <label className={lbl}>Type *</label>
